@@ -253,9 +253,9 @@
   },
   "322": {
     "inputs": {
-      "url_or_path": ""
+      "image": ""
     },
-    "class_type": "LoadImageFromUrlOrPath",
+    "class_type": "LoadImage",
     "_meta": {
       "title": "LoadPose [in_pose]"
     }
@@ -401,9 +401,9 @@
   },
   "342": {
     "inputs": {
-      "url_or_path": ""
+      "image": ""
     },
-    "class_type": "LoadImageFromUrlOrPath",
+    "class_type": "LoadImage",
     "_meta": {
       "title": "LoadCharacter [in_image]"
     }

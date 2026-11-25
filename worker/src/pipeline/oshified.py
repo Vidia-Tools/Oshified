@@ -1,6 +1,7 @@
 """Server-owned mode choices for the Oshified workflows."""
 
 import json
+import os
 from pathlib import Path
 import re
 
@@ -43,6 +44,25 @@ def apply_recipe(params):
     params["prompt"] = recipe["prompts"][params.get("variant", "female")]
     params["style_lora"] = recipe["lora"]
     params["video_url"] = "" if params["files"].get("in_audio") else params["video_url"]
+
+
+
+def orient_staged_images(files):
+    """Preserve the portrait recipe's EXIF orientation before core LoadImage."""
+    from PIL import Image, ImageOps
+
+    for slot in ("in_pose", "in_image"):
+        source = Path(files[slot])
+        with Image.open(source) as image:
+            if image.getexif().get(274, 1) not in range(2, 9):
+                continue
+            # Core LoadImage does not apply all orientation tags for PNG or WebP.
+            # Write an oriented, lossless copy without changing the original upload.
+            destination = source.with_name(source.name + ".oriented.png")
+            temporary = destination.with_suffix(".partial")
+            ImageOps.exif_transpose(image).save(temporary, format="PNG")
+            os.replace(temporary, destination)
+        files[slot] = str(destination)
 
 
 def load_manifest(retry_clip=False):

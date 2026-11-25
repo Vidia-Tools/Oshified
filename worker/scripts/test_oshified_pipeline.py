@@ -8,6 +8,8 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
+from PIL import Image
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from comfy_support import validate_input
 from pipeline import oshified, runner
@@ -30,6 +32,8 @@ class OshifiedPipelineTests(unittest.TestCase):
                 root = Path(directory)
                 files = {slot: str(root / (slot + ".png")) for slot in oshified.REQUIRED_FILES}
                 files["in_audio"] = str(root / "audio.wav")
+                for slot in ("in_pose", "in_image"):
+                    Image.new("RGB", (64, 48)).save(files[slot])
                 job, error = validate_input({
                     "generation_id": "oshified_fixture",
                     "params": {"method": method, "variant": "male", "files": files},
@@ -63,12 +67,30 @@ class OshifiedPipelineTests(unittest.TestCase):
 
                 self.assertEqual(observed[0]["193"]["inputs"]["text"], recipe["prompts"]["male"])
                 self.assertEqual(observed[0]["197"]["inputs"]["lora_name"], recipe["lora"])
+                for node, slot in (("322", "in_pose"), ("342", "in_image")):
+                    self.assertEqual(observed[0][node]["class_type"], "LoadImage")
+                    self.assertEqual(observed[0][node]["inputs"]["image"], files[slot])
                 self.assertEqual(observed[1]["1"]["inputs"]["image"], str(root / "portrait.png"))
                 self.assertEqual(observed[2]["187"]["inputs"]["image"], str(root / "portrait.png"))
                 self.assertEqual(observed[2]["345"]["inputs"]["audio_file"], files["in_audio"])
                 self.assertEqual(result["artifacts"], {"still": str(root / "still.jpg"), "clip": str(root / "clip.mp4")})
                 self.assertEqual(result["final_output"], str(root / "clip.mp4"))
                 self.assertEqual(delivered, [("portrait", str(root / "portrait.png")), *result["artifacts"].items()])
+
+    def test_staged_image_preserves_orientation_before_core_load(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            files = {slot: str(root / f"{slot}.bin") for slot in ("in_pose", "in_image")}
+            image = Image.new("RGB", (48, 64))
+            image.save(files["in_pose"], format="PNG")
+            orientation = image.getexif()
+            orientation[274] = 6
+            image.save(files["in_image"], format="PNG", exif=orientation)
+            oshified.orient_staged_images(files)
+            self.assertEqual(files["in_pose"], str(root / "in_pose.bin"))
+            with Image.open(files["in_image"]) as oriented:
+                self.assertEqual(oriented.size, (64, 48))
+                self.assertEqual(oriented.getexif().get(274, 1), 1)
 
     def test_animation_retry_loads_only_the_clip_stage(self):
         files = {slot: "fixture" for slot in oshified.RETRY_FILES}

@@ -582,6 +582,11 @@ def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full
     params["seed"] = seed
 
     file_paths = download_files(params.get("files"), os.path.join(gen_dir, "inputs"))
+    if is_oshified and not params.get("retry_clip", False):
+        try:
+            oshified.orient_staged_images(file_paths)
+        except (OSError, ValueError) as exc:
+            raise PipelineError("Could not read the Oshified input images") from exc
     state = _load_state(state_path)
     # The original source video is the initial "previous output": prompt_prep is
     # text-only (no video), so the first video stage's [in_prev] must resolve to

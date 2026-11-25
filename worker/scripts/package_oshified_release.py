@@ -15,7 +15,6 @@ import tempfile
 
 
 DEPENDENCIES = (
-    "ComfyUI-load-image-from-url",
     "comfyui-videohelpersuite",
     "comfyui_controlnet_aux",
     "comfyui_essentials",

@@ -10,7 +10,7 @@ loads model weights from Backblaze B2 into the worker's local cache.
 ### Local development
 
 1. Start ComfyUI v0.25.1 on `127.0.0.1:8188`. Install the Oshified
-   node pack at the chosen Git commit and the four custom-node dependencies listed
+   node pack at the chosen Git commit and the three custom-node dependencies listed
    in `worker/scripts/package_oshified_release.py` in ComfyUI's
    `custom_nodes` directory. The Oshified pack also registers the inherited
    Vidia node IDs, so use a ComfyUI node directory with a single copy of the
@@ -76,8 +76,8 @@ Prepare a reviewed release directory containing:
   and SHA-256 checksums. The operator's model bucket must contain the objects
   named in this manifest.
 - `nodes/` containing reviewed source snapshots of
-  `ComfyUI-load-image-from-url`, `comfyui-videohelpersuite`,
-  `comfyui_controlnet_aux`, and `comfyui_essentials`. Retain the corresponding
+  `comfyui-videohelpersuite`, `comfyui_controlnet_aux`, and
+  `comfyui_essentials`. Retain the corresponding
   upstream source revisions and license notices with the release record.
 
 From the app checkout, provide the separately checked out Oshified nodes
