@@ -3212,3 +3212,21 @@ input[type="range"]:disabled,
     transform: translateY(-2px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
+
+.model-preparation {
+    margin-block: 0.5rem;
+    font-size: 0.9rem;
+}
+.model-preparation progress {
+    display: block;
+    height: 0.55rem;
+    margin-block-start: 0.35rem;
+    accent-color: #7A37FF;
+}
+
+.result-notification:has(.model-preparation:not([hidden])) > span {
+    display: none;
+}
+.result-notification .model-preparation {
+    min-width: min(16rem, 65vw);
+}

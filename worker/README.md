@@ -149,3 +149,37 @@ loader then reads `manifest.json` + `workflows/` live from that directory
 instead of the baked-in defaults. The admin-gated hosted Build Mode write path
 that targets R2 + the network volume is deferred to v1.1 (security surface +
 audit logging + validation hardening). Build Mode v1 writes locally only.
+
+## Optional model store for volume-free deployment
+
+Build `worker/Dockerfile.model-store` from the monorepo root with a pinned
+`WORKER_IMAGE` and BuildKit named context `model_release`. That context contains
+a checksummed `manifest.json` and pinned `nodes/` directory. Do not include
+deploy keys, uploads, outputs or a second copy of the model files in the
+image. For example, from the repository root:
+
+```sh
+docker build --platform linux/amd64 \
+  --build-arg WORKER_IMAGE="$VIDIA_WORKER_IMAGE" \
+  --build-context model_release=/path/to/model-release \
+  -f worker/Dockerfile.model-store -t vidia-model-store:local .
+```
+
+Set `VIDIA_WORKER_IMAGE` to a compatible Vidia worker image pinned by digest.
+Generate the manifest with `worker/scripts/build_model_manifest.py`
+from the curated model directory. Declare runtime-only dependencies with
+`node_classes` and model names that differ from an on-disk name with
+`references`. Upload each model to the exact immutable `key` in the
+manifest, and verify a clean restore before deployment.
+
+Configure the worker with `MODEL_STORE_ENDPOINT`, `MODEL_STORE_REGION`,
+`MODEL_STORE_BUCKET`, `MODEL_STORE_KEY_ID` and `MODEL_STORE_APP_KEY`.
+Use a private bucket and app key scoped to the release prefix with read access. Backblaze B2 is the reference S3-compatible
+provider. Keep the access values in runtime secrets.
+
+The worker starts without a network volume. It fetches missing weights for
+the active graph, verifies them against the manifest, and reuses them on the
+same worker. The hosted UI reports actual bytes, then distinguishes model
+loading from generation. The regular local and volume-backed worker paths
+use their existing models when `MODEL_STORE_MANIFEST` is unset. Size the worker disk and job
+timeout from the largest supported job and test on a fresh worker. A downstream app can supply its own model manifest and node bundle to the same build.

@@ -12,11 +12,12 @@ import { initializeDebugIndicator } from '../ui/debug-indicator.js';
 import { handleFileUpload } from '../ui/uploads.js';
 import { initializeTheme } from '../ui/theme.js';
 import { initializeProgressTracking } from '../ui/progress.js';
-import { setupHelperText, toggleHint } from '../ui/helpers.js';
+import { setupHelperText, toggleHint, updateNotification } from '../ui/helpers.js';
 import { renderControls } from './controls-renderer.js';
 import { handleGeneration } from '../features/generation/lifecycle.js';
 import { initBuildMode } from '../build/build-mode.js';
 import * as state from './state.js';
+import { wsManager } from './websocket.js';
 import * as store from './generation-store.js';
 import { initializeFeatureWarnings } from '../ui/feature-warnings.js';
 
@@ -58,6 +59,13 @@ export class VidiaApp {
             this.initializePromptArea();
             this.setupEventBindings();
             this.initializeFeatures();
+            const previousJob = wsManager.activeJob();
+            if (previousJob) {
+                state.setIsGenerating(true);
+                state.setWorkflowCompleted(false);
+                updateNotification('Reconnecting to your generation…', true, false, 0);
+                wsManager.connect(previousJob);
+            }
 
             logDebug('App initialized successfully');
         } catch (error) {

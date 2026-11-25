@@ -38,6 +38,8 @@ DUMMY_PARAMS = {
     "speed_lora": "Hyper-SDXL-8steps-CFG-lora.safetensors",
     "style_lora": "style.safetensors",
     "effects_lora": "effects.safetensors",
+    "ic_lora": "fixture_ic_lora.safetensors",
+    "ic_lora_strength": 0.8,
     "pusa_lora_low": "pusa_low.safetensors",
     "pusa_lora_high": "pusa_high.safetensors",
     "lora_strength": 0.8,

@@ -12,11 +12,12 @@ import random
 import time
 
 from comfy_support import (
-    COMFY_POLLING_INTERVAL_MS, COMFY_POLLING_MAX_RETRIES,
+    COMFY_HOST, COMFY_POLLING_INTERVAL_MS, COMFY_POLLING_MAX_RETRIES,
     LOG_THROTTLE_SECONDS, StageRelay, logger, get_history, get_queue,
     queue_workflow,
 )
 from pipeline import loader
+from model_assets import ModelPreparationError, prepare_models
 
 import requests
 
@@ -618,6 +619,10 @@ def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full
 
             stage_relay = StageRelay(relay, name, index + 1, total)
             stage_relay.send_progress("stage_start", {"status": "started"})
+            try:
+                prepare_models(graph, stage_relay, COMFY_HOST)
+            except ModelPreparationError as exc:
+                raise PipelineError(str(exc), name) from exc
             prompt_id, history = _run_stage(graph, info, progress, stage_relay, log_state)
 
             stage_record = {"prompt_id": prompt_id, "params": {}}

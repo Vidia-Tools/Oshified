@@ -642,3 +642,42 @@ export function hideHeaderStartupProgress() {
     }
 }
 
+
+let modelPreparation;
+
+export function showModelPreparation(data) {
+    const container = document.querySelector('.result-notification');
+    if (!container || !['downloading', 'loading', 'starting'].includes(data?.phase)) return;
+    if (!modelPreparation || !modelPreparation.isConnected) {
+        modelPreparation = document.createElement('section');
+        modelPreparation.className = 'model-preparation';
+        const status = document.createElement('div');
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
+        const progress = document.createElement('progress');
+        progress.setAttribute('aria-label', 'Model download progress');
+        progress.style.width = '100%';
+        modelPreparation.append(status, progress);
+        container.prepend(modelPreparation);
+    }
+    const [status, bar] = modelPreparation.children;
+    modelPreparation.hidden = false;
+    const total = data.totalBytes;
+    const received = data.bytesReceived;
+    if (data.phase === 'downloading' && Number.isSafeInteger(total) && total > 0 &&
+        Number.isSafeInteger(received) && received >= 0 && received <= total) {
+        const gb = bytes => (bytes / 1e9).toFixed(2);
+        bar.max = total;
+        bar.value = received;
+        status.textContent = 'Downloading models · ' + gb(received) + ' of ' + gb(total) + ' GB';
+    } else {
+        bar.removeAttribute('value');
+        status.textContent = data.phase === 'starting'
+            ? 'Starting worker. Required models load next.'
+            : data.phase === 'loading' ? 'Loading models…' : 'Downloading models…';
+    }
+}
+
+export function hideModelPreparation() {
+    if (modelPreparation) modelPreparation.hidden = true;
+}

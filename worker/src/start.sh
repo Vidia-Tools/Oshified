@@ -68,7 +68,18 @@ log "[Startup] All runtime hotfixes applied."
 
 # Set paths based on deployment mode
 COMFY_PATH=/ComfyUI
-if [ "$DEPLOYMENT_MODE" = "pod" ]; then
+if [ -n "${MODEL_STORE_MANIFEST:-}" ]; then
+    : "${MODEL_STORE_ROOT:?Set MODEL_STORE_ROOT for the model store}"
+    : "${MODEL_STORE_NODE_DIR:?Set MODEL_STORE_NODE_DIR for the model store}"
+    [ -r "$MODEL_STORE_MANIFEST" ] && [ -d "$MODEL_STORE_NODE_DIR" ] || exit 1
+    BASE_PATH="$(dirname "$MODEL_STORE_ROOT")"
+    mkdir -p "$MODEL_STORE_ROOT"
+    [ "$MODEL_STORE_ROOT" = "$BASE_PATH/models" ] || exit 1
+    if [ ! -e "$BASE_PATH/nodes" ]; then
+        ln -s "$MODEL_STORE_NODE_DIR" "$BASE_PATH/nodes" || exit 1
+    fi
+    [ "$(readlink "$BASE_PATH/nodes")" = "$MODEL_STORE_NODE_DIR" ] || exit 1
+elif [ "$DEPLOYMENT_MODE" = "pod" ]; then
     BASE_PATH=/workspace
     log "Deployment mode detected: POD"
 else
@@ -148,7 +159,9 @@ if [ -n "${VIDIA_NODE_DEPLOY_KEY:-}" ] && [ -f "$VIDIA_NODE_DEPLOY_KEY" ]; then
     log "  vidia-open-studio-node deploy key loaded"
 fi
 
-if [ -d "$VIDIA_NODE_PATH/.git" ]; then
+if [ -n "${MODEL_STORE_MANIFEST:-}" ]; then
+    [ -d "$VIDIA_NODE_PATH" ] || exit 1
+elif [ -d "$VIDIA_NODE_PATH/.git" ]; then
     cd "$VIDIA_NODE_PATH" && git fetch --depth=1 origin "$VIDIA_NODE_REPO_REF" \
         && git reset --hard "origin/$VIDIA_NODE_REPO_REF" \
         && NODE_CLONED=true \

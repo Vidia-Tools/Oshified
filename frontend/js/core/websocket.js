@@ -5,7 +5,7 @@ import { MESSAGES } from '../config/helper-messages.js';
 import * as state from './state.js';
 // Import standard notification functions
 import { showToastNotification, showErrorNotification, updateNotification, handleFatalError } from '../ui/helpers.js';
-import { setProgressBarState, hideHeaderStartupProgress, setStageProgress } from '../ui/progress.js';
+import { setProgressBarState, hideHeaderStartupProgress, setStageProgress, showModelPreparation, hideModelPreparation } from '../ui/progress.js';
 import { startAnimation, stopAnimation } from '../ui/animations.js';
 
 const logDebug = createLogger('WebSocket');
@@ -65,6 +65,22 @@ class WebSocketManager {
      */
     getConnectedClientId() {
         return this.connectedClientId;
+    }
+
+    rememberJob(id) {
+        try { sessionStorage.setItem('vidia-active-generation', JSON.stringify({ id, at: Date.now() })); } catch (_) {}
+    }
+
+    activeJob() {
+        try {
+            const job = JSON.parse(sessionStorage.getItem('vidia-active-generation') || 'null');
+            if (typeof job?.id === 'string' && Date.now() - job.at < 60 * 60 * 1000) return job.id;
+        } catch (_) {}
+        return null;
+    }
+
+    forgetJob() {
+        try { sessionStorage.removeItem('vidia-active-generation'); } catch (_) {}
     }
 
     connect(clientId) {
@@ -245,6 +261,11 @@ class WebSocketManager {
                 this.handleExecuting(data.data);
                 break;
             
+            case 'model_preparation':
+                this.lastHeartbeatAt = Date.now();
+                hideHeaderStartupProgress();
+                showModelPreparation(data.data);
+                break;
             case 'progress':
                 this.handleProgress(data.data);
                 break;
@@ -254,6 +275,8 @@ class WebSocketManager {
                 break;
 
             case 'error':
+                this.forgetJob();
+                hideModelPreparation();
                 this.handleWorkflowError(data.data);
                 break;
                 
@@ -276,6 +299,8 @@ class WebSocketManager {
                 }
                 break;
             case 'videoReady':
+                this.forgetJob();
+                hideModelPreparation();
                 this.handleVideoReady(data.data);
                 break;
                 
@@ -292,6 +317,7 @@ class WebSocketManager {
 
         // Restore state based on the snapshot
         if (reconnectData.status === 'completed') {
+            this.forgetJob();
             logDebug('Reconnected to a completed job.');
             // For RUNPOD_MODE, only set runDetails and let generation.js handle display
             if (reconnectData.videoUrl) {
@@ -305,11 +331,16 @@ class WebSocketManager {
                 state.setIsGenerating(false);
             }
         } else if (reconnectData.status === 'failed') {
+            this.forgetJob();
             logDebug('Reconnected to a failed job.');
             state.setWorkflowCompleted(true); // Mark workflow as "done" on error
             state.setIsGenerating(false); // Clear generating state
             showErrorNotification(reconnectData.error || 'The job failed while you were disconnected.');
         } else if (reconnectData.status === 'in_progress' || reconnectData.status === 'pending') {
+            if (reconnectData.modelPreparation) {
+                showModelPreparation(reconnectData.modelPreparation);
+                return;
+            }
             logDebug('Reconnected to a job in progress.');
             this.hasReceivedProgress = true; // We have the state, so mark as received.
             if (reconnectData.progress) {
@@ -403,6 +434,7 @@ class WebSocketManager {
     }
 
     handleProgress(progressData) {
+        hideModelPreparation();
         // Mark that we've received at least one progress update
         this.hasReceivedProgress = true;
         logDebug('Progress update received, marked hasReceivedProgress = true');

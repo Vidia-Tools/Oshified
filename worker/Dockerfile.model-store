@@ -1,0 +1,19 @@
+# Build from the Vidia repo with --build-context model_release=<release directory>.
+ARG WORKER_IMAGE
+FROM ${WORKER_IMAGE}
+COPY worker/src/ /src/
+COPY workflows/ /workflows/
+COPY --from=model_release nodes/ /opt/model-release/nodes/
+COPY --from=model_release manifest.json /opt/model-release/manifest.json
+RUN config=/opt/model-release/nodes/comfyui-frame-interpolation/config.yaml \
+    && if [ -f "$config" ]; then \
+        sed -i 's|^ckpts_path:.*|ckpts_path: "/opt/model-cache/models/frame_interpolation"|' "$config" \
+        && grep -qx 'ckpts_path: "/opt/model-cache/models/frame_interpolation"' "$config"; \
+    fi
+ENV DEPLOYMENT_MODE=serverless \
+    MODEL_STORE_MANIFEST=/opt/model-release/manifest.json \
+    MODEL_STORE_NODE_DIR=/opt/model-release/nodes \
+    MODEL_STORE_ROOT=/opt/model-cache/models \
+    AUX_ANNOTATOR_CKPTS_PATH=/opt/model-cache/models/annotator \
+    WORKFLOWS_BASE=/
+CMD ["/bin/bash", "/src/start.sh"]

@@ -25,7 +25,6 @@ import { updateNotification, showToastNotification, handleFatalError } from '../
 import { displayResult, clearResult, displayLocalOutputPath } from '../../ui/result-display.js';
 import {
     setProgressBarState,
-    setHeaderStartupProgress,
     hideHeaderStartupProgress,
 } from '../../ui/progress.js';
 import { updateCredits } from '../pricing.js';
@@ -269,6 +268,8 @@ export async function handleGeneration(type, { cost = 0 } = {}) {
             throw Object.assign(new Error(envelope.error), { stage: envelope.stage, generation_id });
         }
 
+        if (RUNPOD_MODE) wsManager.rememberJob(generation_id);
+
         // Watchdog (a): backend health poll loop. GET /api/vidiaGeneration/status every
         // 2s x 60 via API_BASE. Transitions the bar from 'starting' -> 'active' and
         // surfaces a confirmed backend 'failed' job immediately. Fire-and-forget; it
@@ -288,6 +289,7 @@ export async function handleGeneration(type, { cost = 0 } = {}) {
                         const health = data?.health || 'unhealthy';
                         const jobStatus = data?.job?.status || null;
                         if (jobStatus === 'failed') {
+                            wsManager.forgetJob();
                             try { setProgressBarState('failed'); } catch (_) {}
                             updateNotification('Connection to worker lost. Generation canceled or failed.', true, true, 0);
                             try { hideHeaderStartupProgress(); } catch (_) {}
@@ -298,9 +300,7 @@ export async function handleGeneration(type, { cost = 0 } = {}) {
                         }
                         if (health === 'starting') {
                             try { setProgressBarState('starting'); } catch (_) {}
-                            updateNotification('Worker starting...', true, false, 0);
-                            const p = typeof data?.startupProgressPercent === 'number' ? data.startupProgressPercent : 5;
-                            try { setHeaderStartupProgress(p); } catch (_) {}
+                            updateNotification('Starting worker. Required models load next.', true, false, 0);
                         } else if (health === 'ok') {
                             if (wsManager.connectionState === 'reconnecting') {
                                 try { setProgressBarState('reconnecting'); } catch (_) {}

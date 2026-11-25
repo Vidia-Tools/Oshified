@@ -20,6 +20,20 @@ export class WebSocketManager {
 		this.lastStartupStep = null;
 	}
 
+    async readModelPreparationJob(generation) {
+        const current = this.jobs.get(generation);
+        if (current) return current;
+        const key = `model-preparation:${generation}`;
+        const previous = await this.state.storage.get(key);
+        if (!previous) return null;
+        if (Date.now() - previous.lastUpdate > 60 * 60 * 1000) {
+            await this.state.storage.delete(key);
+            return null;
+        }
+        this.jobs.set(generation, previous);
+        return previous;
+    }
+
     async fetch(request) {
         const url = new URL(request.url);
 
@@ -48,7 +62,7 @@ export class WebSocketManager {
             const { generation_id, eventType, progressData } = data;
             
             // Find job info for this generation_id
-            const jobInfo = this.jobs.get(generation_id);
+            const jobInfo = await this.readModelPreparationJob(generation_id);
             if (!jobInfo) {
                 return new Response('Unknown generation_id', { status: 404 });
             }
@@ -109,11 +123,27 @@ export class WebSocketManager {
             // Update job status in our internal state
             jobInfo.lastUpdate = Date.now();
             jobInfo.status = (eventType === 'completed' || eventType === 'executed' || eventType === 'videoReady') ? 'completed' : 'in_progress';
-            jobInfo.progress = progressData;
+            const hadModelPreparation = Boolean(jobInfo.modelPreparation);
+            if (eventType === 'model_preparation') {
+                jobInfo.modelPreparation = progressData;
+                jobInfo.lastHeartbeatAt = Date.now();
+            } else {
+                jobInfo.progress = progressData;
+                if (['progress', 'error', 'completed', 'executed', 'videoReady'].includes(eventType)) {
+                    jobInfo.modelPreparation = null;
+                }
+            }
             if ((eventType === 'executed' || eventType === 'videoReady') && progressData && progressData.videoUrl) {
                 jobInfo.videoUrl = progressData.videoUrl;
             }
             this.jobs.set(generation_id, jobInfo);
+            // Persist the active preparation snapshot for reconnects after object eviction.
+            const preparationKey = `model-preparation:${generation_id}`;
+            if (eventType === 'model_preparation') {
+                await this.state.storage.put(preparationKey, jobInfo);
+            } else if (hadModelPreparation && !jobInfo.modelPreparation) {
+                await this.state.storage.delete(preparationKey);
+            }
 
             if (eventType === 'videoReady') {
                 console.log(`Job ${generation_id} marked completed via videoReady; heartbeat monitoring will now ignore this job`);
@@ -261,7 +291,7 @@ export class WebSocketManager {
                 }), { status: 400, headers: { 'Content-Type': 'application/json' } });
             }
 
-            const jobInfo = this.jobs.get(generation_id) || null;
+            const jobInfo = await this.readModelPreparationJob(generation_id);
             
             // Compute health for this specific generation using only heartbeats and timing
             const now = Date.now();
@@ -431,7 +461,7 @@ export class WebSocketManager {
         this.sessions.get(generation_id).add(webSocket);
 
         // Check if there's an existing job for this generation_id
-        const jobInfo = this.jobs.get(generation_id);
+        const jobInfo = await this.readModelPreparationJob(generation_id);
         if (jobInfo) {
             // This is a reconnection, send the full current state
             console.log(`WebSocket reconnection detected for generation_id: ${generation_id}, status: ${jobInfo.status}`);
@@ -441,6 +471,7 @@ export class WebSocketManager {
                 data: {
                     generation_id: generation_id,
                     status: jobInfo.status,
+                    modelPreparation: jobInfo.modelPreparation || null,
                     progress: jobInfo.progress, // The last known progress
                     videoUrl: jobInfo.status === 'completed' ? jobInfo.videoUrl : null, // Send URL if completed
                     error: jobInfo.status === 'failed' ? jobInfo.error : null, // Send error if failed
