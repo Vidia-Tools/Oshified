@@ -1,0 +1,16 @@
+{
+  "vtuber-to-real": {
+    "lora": "vtuberToReal V1.safetensors",
+    "prompts": {
+      "female": "Transform this VTuber avatar to photorealistic equivalent of the same person, Fed_vTuberToHuman transformation\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)",
+      "male": "Transform this male VTuber avatar to photorealistic equivalent of the same male person, Fed_vTuberToHuman transformation\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)"
+    }
+  },
+  "real-to-vtuber": {
+    "lora": "realToVtuber V1.safetensors",
+    "prompts": {
+      "female": "Transform this photorealistic photo into a VTuber avatar of the same person, Fed_HumanToVTuber transformation\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)",
+      "male": "Transform this male photorealistic photo into a VTuber avatar of the same male person, Fed_HumanToVTuber transformation\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "stages": [
+    {
+      "name": "portrait",
+      "file": "workflows/oshified_portrait.json",
+      "output_slot": "in_portrait",
+      "artifact": "portrait"
+    },
+    {
+      "name": "still",
+      "file": "workflows/oshified_still.json",
+      "artifact": "still"
+    },
+    {
+      "name": "clip",
+      "file": "workflows/oshified_clip.json",
+      "final": true,
+      "artifact": "clip"
+    }
+  ]
+}

@@ -1,0 +1,424 @@
+{
+  "183": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "184": {
+    "inputs": {
+      "clip_name1": "clip_l.safetensors",
+      "clip_name2": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "185": {
+    "inputs": {
+      "conditioning": [
+        "193",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "ConditioningZeroOut"
+    }
+  },
+  "187": {
+    "inputs": {
+      "samples": [
+        "192",
+        0
+      ],
+      "vae": [
+        "183",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "188": {
+    "inputs": {
+      "pixels": [
+        "189",
+        0
+      ],
+      "vae": [
+        "183",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "189": {
+    "inputs": {
+      "image": [
+        "338",
+        0
+      ]
+    },
+    "class_type": "FluxKontextImageScale",
+    "_meta": {
+      "title": "FluxKontextImageScale"
+    }
+  },
+  "190": {
+    "inputs": {
+      "guidance": 2.5,
+      "conditioning": [
+        "191",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "191": {
+    "inputs": {
+      "conditioning": [
+        "193",
+        0
+      ],
+      "latent": [
+        "188",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "ReferenceLatent"
+    }
+  },
+  "192": {
+    "inputs": {
+      "seed": 877350398044587,
+      "steps": 20,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "197",
+        0
+      ],
+      "positive": [
+        "190",
+        0
+      ],
+      "negative": [
+        "185",
+        0
+      ],
+      "latent_image": [
+        "188",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "193": {
+    "inputs": {
+      "text": "Transform this VTuber avatar to photorealistic equivalent of the same person, Fed_vTuberToHuman transformation\n\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)\n",
+      "clip": [
+        "184",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt) {prompt}"
+    }
+  },
+  "194": {
+    "inputs": {
+      "unet_name": "flux1-dev-kontext_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "197": {
+    "inputs": {
+      "lora_name": "vtuberToReal V1.safetensors",
+      "strength_model": 0.75,
+      "model": [
+        "194",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "MY LORA {style_lora}"
+    }
+  },
+  "312": {
+    "inputs": {
+      "unet_name": "qwen_image_edit_2509_fp8_e4m3fn.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "313": {
+    "inputs": {
+      "lora_name": "Qwen-Image-Lightning-4steps-V1.0.safetensors",
+      "strength_model": 1,
+      "model": [
+        "312",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "315": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "317": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "320": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "interpolation": "lanczos",
+      "method": "pad",
+      "condition": "always",
+      "multiple_of": 8,
+      "image": [
+        "342",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "321": {
+    "inputs": {
+      "width": [
+        "320",
+        1
+      ],
+      "height": [
+        "320",
+        2
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "322": {
+    "inputs": {
+      "url_or_path": ""
+    },
+    "class_type": "LoadImageFromUrlOrPath",
+    "_meta": {
+      "title": "LoadPose [in_pose]"
+    }
+  },
+  "323": {
+    "inputs": {
+      "width": [
+        "320",
+        1
+      ],
+      "height": [
+        "320",
+        2
+      ],
+      "interpolation": "nearest",
+      "method": "pad",
+      "condition": "always",
+      "multiple_of": 8,
+      "image": [
+        "322",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "324": {
+    "inputs": {
+      "detect_hand": "enable",
+      "detect_body": "enable",
+      "detect_face": "enable",
+      "resolution": 512,
+      "bbox_detector": "yolox_l.onnx",
+      "pose_estimator": "dw-ll_ucoco_384.onnx",
+      "scale_stick_for_xinsr_cn": "disable",
+      "image": [
+        "323",
+        0
+      ]
+    },
+    "class_type": "DWPreprocessor",
+    "_meta": {
+      "title": "DWPose Estimator"
+    }
+  },
+  "328": {
+    "inputs": {
+      "prompt": "Preserve character's exact face, Preserve exact unchanged subject likeness",
+      "clip": [
+        "315",
+        0
+      ],
+      "vae": [
+        "317",
+        0
+      ],
+      "image1": [
+        "320",
+        0
+      ],
+      "image2": [
+        "324",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "TextEncodeQwenImageEditPlus"
+    }
+  },
+  "332": {
+    "inputs": {
+      "seed": 196573529878410,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "313",
+        0
+      ],
+      "positive": [
+        "328",
+        0
+      ],
+      "negative": [
+        "334",
+        0
+      ],
+      "latent_image": [
+        "321",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "334": {
+    "inputs": {
+      "prompt": "photo",
+      "clip": [
+        "315",
+        0
+      ],
+      "vae": [
+        "317",
+        0
+      ],
+      "image1": [
+        "320",
+        0
+      ],
+      "image2": [
+        "324",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "negative"
+    }
+  },
+  "338": {
+    "inputs": {
+      "samples": [
+        "332",
+        0
+      ],
+      "vae": [
+        "317",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "342": {
+    "inputs": {
+      "url_or_path": ""
+    },
+    "class_type": "LoadImageFromUrlOrPath",
+    "_meta": {
+      "title": "LoadCharacter [in_image]"
+    }
+  },
+  "358": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "187",
+        0
+      ],
+      "filename_prefix": "oshified-portrait"
+    },
+    "_meta": {
+      "title": "Save lossless portrait [out]"
+    }
+  }
+}

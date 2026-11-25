@@ -1,0 +1,25 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": ""
+    },
+    "_meta": {
+      "title": "Load lossless portrait [in_portrait]"
+    }
+  },
+  "358": {
+    "inputs": {
+      "filename_prefix": "OshifiedImage",
+      "quality": 95,
+      "images": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "OshifiedImageSaver",
+    "_meta": {
+      "title": "Oshified Image Saver 🌸 [out]"
+    }
+  }
+}

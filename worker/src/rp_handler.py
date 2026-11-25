@@ -16,7 +16,8 @@ from comfy_support import (
     WS_READY_TIMEOUT, ProgressTracker, WebSocketProgressRelay, check_server,
     logger, validate_input,
 )
-from pipeline import runner
+from pipeline import oshified, runner
+from oshified_delivery import ArtifactDeliveryError, OshifiedDelivery
 
 
 COMFY_LOG_PATH = os.environ.get("COMFY_LOG_PATH", "/tmp/comfy.log")
@@ -95,6 +96,8 @@ def _surface_node_callback_logs():
 def handler(job):
     """The main function that handles a job."""
     generation_id = None
+    relay = None
+    is_oshified = False
     try:
         logger.info("Processing Request")
         validated, error_message = validate_input(job.get("input"))
@@ -116,13 +119,13 @@ def handler(job):
                 generation_id = parts[0]
         logger.once("job_start", f"[JOB] start generation_id={generation_id} user_id={user_id}")
 
+        is_oshified = params["method"] in oshified.RECIPES
+        relay = WebSocketProgressRelay(generation_id, params.get("attempt", 1) if is_oshified else None)
         check_server(
             f"http://{COMFY_HOST}",
             COMFY_API_AVAILABLE_MAX_RETRIES,
             COMFY_API_AVAILABLE_INTERVAL_MS,
         )
-
-        relay = WebSocketProgressRelay(generation_id)
 
         progress = None
         if ENABLE_WEBSOCKET_PROGRESS:
@@ -151,25 +154,34 @@ def handler(job):
 
         start_time = time.time()
         try:
-            result = runner.run_pipeline(generation_id, user_id, params, relay, progress,
-                                         run_type=validated.get("type", "full"))
+            if is_oshified:
+                delivery = OshifiedDelivery(generation_id, relay)
+                result = runner.run_pipeline(generation_id, user_id, params, relay, progress,
+                                             on_artifact=delivery)
+            else:
+                result = runner.run_pipeline(generation_id, user_id, params, relay, progress,
+                                             run_type=validated.get("type", "full"))
             summary = {"generation_id": generation_id, "status": "success",
                        "durations": {"total_s": int(time.time() - start_time)},
                        "stages": result.get("stages")}
             print("[SUMMARY]", json.dumps(summary, separators=(",", ":")))
-            _fallback_notify_video_ready(generation_id, relay)
-            _surface_node_callback_logs()
+            if is_oshified:
+                result = {"generation_id": generation_id, "artifacts": sorted(result["artifacts"])}
+            else:
+                _fallback_notify_video_ready(generation_id, relay)
+                _surface_node_callback_logs()
             return {"output": {"message": result, "status": "success",
                                "refresh_worker": REFRESH_WORKER}}
-        except runner.PipelineError as e:
+        except (runner.PipelineError, ArtifactDeliveryError) as e:
+            stage = getattr(e, "stage", None)
             summary = {"generation_id": generation_id, "status": "error",
                        "durations": {"total_s": int(time.time() - start_time)},
-                       "error": str(e), "stage": e.stage}
+                       "error": str(e), "stage": stage}
             print("[SUMMARY]", json.dumps(summary, separators=(",", ":")))
             relay.send_progress("error", {"error": str(e),
                                           "generation_id": generation_id,
-                                          "stage": e.stage})
-            return {"error": str(e), "generation_id": generation_id, "stage": e.stage}
+                                          "stage": stage})
+            return {"error": str(e), "generation_id": generation_id, "stage": stage}
         finally:
             stop_hb.set()
             if progress:
@@ -179,6 +191,11 @@ def handler(job):
                     pass
 
     except Exception as e:
+        if is_oshified and relay:
+            error = "The Oshified worker could not complete the request"
+            relay.send_progress("error", {"error": error, "stage": None})
+            print(f"Oshified worker failed: {type(e).__name__}")
+            return {"error": error, "generation_id": generation_id, "stage": None}
         print(f"\nUnexpected error in handler: {e}")
         return {"error": f"Unexpected error: {e}", "generation_id": generation_id,
                 "stage": None}

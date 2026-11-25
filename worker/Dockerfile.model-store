@@ -1,6 +1,6 @@
 # Build from the Vidia repo with --build-context model_release=<release directory>.
 ARG WORKER_IMAGE
-FROM ${WORKER_IMAGE}
+FROM ${WORKER_IMAGE} AS model-store
 COPY worker/src/ /src/
 COPY workflows/ /workflows/
 COPY --from=model_release nodes/ /opt/model-release/nodes/
@@ -17,3 +17,18 @@ ENV DEPLOYMENT_MODE=serverless \
     AUX_ANNOTATOR_CKPTS_PATH=/opt/model-cache/models/annotator \
     WORKFLOWS_BASE=/
 CMD ["/bin/bash", "/src/start.sh"]
+
+# The Linux amd64 binary from denoland/deno:bin-2.9.6 supports yt-dlp's EJS.
+FROM denoland/deno@sha256:456e1a0fada18d727c3f38eb4937218c1b46924c832b713dcf9358eb32ff15a6 AS deno
+
+FROM model-store AS oshified
+COPY --from=deno /deno /usr/local/bin/deno
+COPY --from=model_release release-receipt.json /opt/model-release/release-receipt.json
+RUN /usr/bin/python3 -m pip install --no-cache-dir \
+        -r /opt/model-release/nodes/vidia-open-studio-node/requirements.txt \
+    && /usr/bin/python3 -c "import yt_dlp_ejs" \
+    && /usr/bin/python3 -m yt_dlp --version \
+    && deno --version \
+    && ffmpeg -version
+
+FROM model-store AS vidia

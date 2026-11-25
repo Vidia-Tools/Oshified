@@ -1,0 +1,759 @@
+{
+  "3": {
+    "inputs": {
+      "seed": 457607521307442,
+      "steps": [
+        "103",
+        0
+      ],
+      "cfg": [
+        "105",
+        0
+      ],
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "54",
+        0
+      ],
+      "positive": [
+        "93",
+        0
+      ],
+      "negative": [
+        "93",
+        1
+      ],
+      "latent_image": [
+        "93",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "The character is yelling in their dirty messy degenerate bedroom cave, in front of a fancy computer",
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "37": {
+    "inputs": {
+      "unet_name": "wan2.2_s2v_14B_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "38": {
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "39": {
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "54": {
+    "inputs": {
+      "shift": 8,
+      "model": [
+        "107",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "ModelSamplingSD3"
+    }
+  },
+  "56": {
+    "inputs": {
+      "audio_encoder": [
+        "57",
+        0
+      ],
+      "audio": [
+        "345",
+        0
+      ]
+    },
+    "class_type": "AudioEncoderEncode",
+    "_meta": {
+      "title": "AudioEncoderEncode"
+    }
+  },
+  "57": {
+    "inputs": {
+      "audio_encoder_name": "wav2vec2_large_english_fp16.safetensors"
+    },
+    "class_type": "AudioEncoderLoader",
+    "_meta": {
+      "title": "AudioEncoderLoader"
+    }
+  },
+  "80": {
+    "inputs": {
+      "samples": [
+        "95",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "93": {
+    "inputs": {
+      "width": 640,
+      "height": 640,
+      "length": [
+        "104",
+        0
+      ],
+      "batch_size": 1,
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ],
+      "audio_encoder_output": [
+        "56",
+        0
+      ],
+      "ref_image": [
+        "187",
+        0
+      ]
+    },
+    "class_type": "WanSoundImageToVideo",
+    "_meta": {
+      "title": "WanSoundImageToVideo"
+    }
+  },
+  "94": {
+    "inputs": {
+      "dim": "t",
+      "index": 0,
+      "amount": 1,
+      "samples": [
+        "182:365",
+        0
+      ]
+    },
+    "class_type": "LatentCut",
+    "_meta": {
+      "title": "LatentCut"
+    }
+  },
+  "95": {
+    "inputs": {
+      "dim": "t",
+      "samples1": [
+        "94",
+        0
+      ],
+      "samples2": [
+        "182:365",
+        0
+      ]
+    },
+    "class_type": "LatentConcat",
+    "_meta": {
+      "title": "LatentConcat"
+    }
+  },
+  "96": {
+    "inputs": {
+      "batch_index": 3,
+      "length": 4096,
+      "image": [
+        "80",
+        0
+      ]
+    },
+    "class_type": "ImageFromBatch",
+    "_meta": {
+      "title": "ImageFromBatch"
+    }
+  },
+  "103": {
+    "inputs": {
+      "value": 4
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Steps"
+    }
+  },
+  "104": {
+    "inputs": {
+      "value": 77
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Chunk Length"
+    }
+  },
+  "105": {
+    "inputs": {
+      "value": 1
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "CFG"
+    }
+  },
+  "107": {
+    "inputs": {
+      "lora_name": "wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors",
+      "strength_model": 1,
+      "model": [
+        "37",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Speed Lora"
+    }
+  },
+  "345": {
+    "inputs": {
+      "video_url": "",
+      "max_duration": 20
+    },
+    "class_type": "OshifiedAudioImporter",
+    "_meta": {
+      "title": "Oshified Audio Importer 🌸 [in_audio?] {video_url}"
+    }
+  },
+  "352": {
+    "inputs": {
+      "frame_rate": 16,
+      "filename_prefix": "OshifiedTest",
+      "format": "video/h264-mp4",
+      "save_output": true,
+      "corner_opacity": 0.4,
+      "append_watermark_source_fps": [
+        "354",
+        0
+      ],
+      "images": [
+        "96",
+        0
+      ],
+      "audio": [
+        "345",
+        0
+      ],
+      "append_watermark": [
+        "353",
+        0
+      ],
+      "watermark_audio": [
+        "353",
+        2
+      ],
+      "corner_watermark": [
+        "356",
+        0
+      ],
+      "corner_watermark_mask": [
+        "355",
+        0
+      ]
+    },
+    "class_type": "OshifiedVideoSaver",
+    "_meta": {
+      "title": "Oshified Video Saver 🌸 [out]"
+    }
+  },
+  "353": {
+    "inputs": {
+      "video": "",
+      "force_rate": 0,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": "None"
+    },
+    "class_type": "VHS_LoadVideoPath",
+    "_meta": {
+      "title": "Append [in_end_card]"
+    }
+  },
+  "354": {
+    "inputs": {
+      "video_info": [
+        "353",
+        3
+      ]
+    },
+    "class_type": "VHS_VideoInfo",
+    "_meta": {
+      "title": "Video Info 🎥🅥🅗🅢"
+    }
+  },
+  "355": {
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "357",
+        0
+      ]
+    },
+    "class_type": "ImageToMask",
+    "_meta": {
+      "title": "Convert Image to Mask"
+    }
+  },
+  "356": {
+    "inputs": {
+      "video": "",
+      "force_rate": 0,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": "None"
+    },
+    "class_type": "VHS_LoadVideoPath",
+    "_meta": {
+      "title": "Corner [in_corner_watermark]"
+    }
+  },
+  "357": {
+    "inputs": {
+      "video": "",
+      "force_rate": 0,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": "None"
+    },
+    "class_type": "VHS_LoadVideoPath",
+    "_meta": {
+      "title": "Corner mask [in_corner_mask]"
+    }
+  },
+  "79:78": {
+    "inputs": {
+      "dim": "t",
+      "samples1": [
+        "3",
+        0
+      ],
+      "samples2": [
+        "79:77",
+        0
+      ]
+    },
+    "class_type": "LatentConcat",
+    "_meta": {
+      "title": "LatentConcat"
+    }
+  },
+  "79:77": {
+    "inputs": {
+      "seed": 1,
+      "steps": [
+        "103",
+        0
+      ],
+      "cfg": [
+        "105",
+        0
+      ],
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "54",
+        0
+      ],
+      "positive": [
+        "79:76",
+        0
+      ],
+      "negative": [
+        "79:76",
+        1
+      ],
+      "latent_image": [
+        "79:76",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "79:76": {
+    "inputs": {
+      "length": [
+        "104",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ],
+      "video_latent": [
+        "3",
+        0
+      ],
+      "audio_encoder_output": [
+        "56",
+        0
+      ],
+      "ref_image": [
+        "187",
+        0
+      ]
+    },
+    "class_type": "WanSoundImageToVideoExtend",
+    "_meta": {
+      "title": "WanSoundImageToVideoExtend"
+    }
+  },
+  "85:359": {
+    "inputs": {
+      "dim": "t",
+      "samples1": [
+        "79:78",
+        0
+      ],
+      "samples2": [
+        "85:360",
+        0
+      ]
+    },
+    "class_type": "LatentConcat",
+    "_meta": {
+      "title": "LatentConcat"
+    }
+  },
+  "85:360": {
+    "inputs": {
+      "seed": 250,
+      "steps": [
+        "103",
+        0
+      ],
+      "cfg": [
+        "105",
+        0
+      ],
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "54",
+        0
+      ],
+      "positive": [
+        "85:361",
+        0
+      ],
+      "negative": [
+        "85:361",
+        1
+      ],
+      "latent_image": [
+        "85:361",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "85:361": {
+    "inputs": {
+      "length": [
+        "104",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ],
+      "video_latent": [
+        "79:78",
+        0
+      ],
+      "audio_encoder_output": [
+        "56",
+        0
+      ],
+      "ref_image": [
+        "187",
+        0
+      ]
+    },
+    "class_type": "WanSoundImageToVideoExtend",
+    "_meta": {
+      "title": "WanSoundImageToVideoExtend"
+    }
+  },
+  "87:362": {
+    "inputs": {
+      "dim": "t",
+      "samples1": [
+        "85:359",
+        0
+      ],
+      "samples2": [
+        "87:363",
+        0
+      ]
+    },
+    "class_type": "LatentConcat",
+    "_meta": {
+      "title": "LatentConcat"
+    }
+  },
+  "87:363": {
+    "inputs": {
+      "seed": 1,
+      "steps": [
+        "103",
+        0
+      ],
+      "cfg": [
+        "105",
+        0
+      ],
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "54",
+        0
+      ],
+      "positive": [
+        "87:364",
+        0
+      ],
+      "negative": [
+        "87:364",
+        1
+      ],
+      "latent_image": [
+        "87:364",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "87:364": {
+    "inputs": {
+      "length": [
+        "104",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ],
+      "video_latent": [
+        "85:359",
+        0
+      ],
+      "audio_encoder_output": [
+        "56",
+        0
+      ],
+      "ref_image": [
+        "187",
+        0
+      ]
+    },
+    "class_type": "WanSoundImageToVideoExtend",
+    "_meta": {
+      "title": "WanSoundImageToVideoExtend"
+    }
+  },
+  "182:365": {
+    "inputs": {
+      "dim": "t",
+      "samples1": [
+        "87:362",
+        0
+      ],
+      "samples2": [
+        "182:366",
+        0
+      ]
+    },
+    "class_type": "LatentConcat",
+    "_meta": {
+      "title": "LatentConcat"
+    }
+  },
+  "182:366": {
+    "inputs": {
+      "seed": 1,
+      "steps": [
+        "103",
+        0
+      ],
+      "cfg": [
+        "105",
+        0
+      ],
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "54",
+        0
+      ],
+      "positive": [
+        "182:367",
+        0
+      ],
+      "negative": [
+        "182:367",
+        1
+      ],
+      "latent_image": [
+        "182:367",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "182:367": {
+    "inputs": {
+      "length": [
+        "104",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ],
+      "video_latent": [
+        "87:362",
+        0
+      ],
+      "audio_encoder_output": [
+        "56",
+        0
+      ],
+      "ref_image": [
+        "187",
+        0
+      ]
+    },
+    "class_type": "WanSoundImageToVideoExtend",
+    "_meta": {
+      "title": "WanSoundImageToVideoExtend"
+    }
+  },
+  "187": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": ""
+    },
+    "_meta": {
+      "title": "Load lossless portrait [in_portrait]"
+    }
+  }
+}

@@ -16,7 +16,7 @@ from comfy_support import (
     LOG_THROTTLE_SECONDS, StageRelay, logger, get_history, get_queue,
     queue_workflow,
 )
-from pipeline import loader
+from pipeline import loader, oshified
 from model_assets import ModelPreparationError, prepare_models
 
 import requests
@@ -117,6 +117,7 @@ def active_stages(manifest, params):
             "path": os.path.join(workflows_base, file),
             "final": stage.get("final", False),
             "output_slot": stage.get("output_slot"),
+            "artifact": stage.get("artifact"),
         })
     return stages
 
@@ -131,12 +132,20 @@ def download_files(files, dest_dir):
         ext = os.path.splitext(url.split("?")[0])[1] or ".bin"
         local = os.path.join(dest_dir, f"{slot}{ext}")
         if not os.path.exists(local):
-            logger.info(f"Downloading {slot}: {url}")
-            r = requests.get(url, stream=True, timeout=120)
-            r.raise_for_status()
-            with open(local, "wb") as f:
-                for chunk in r.iter_content(1 << 20):
-                    f.write(chunk)
+            logger.info(f"Downloading input for {slot}")
+            partial = local + ".partial"
+            try:
+                with requests.get(url, stream=True, timeout=120) as response:
+                    response.raise_for_status()
+                    with open(partial, "wb") as output:
+                        for chunk in response.iter_content(1 << 20):
+                            output.write(chunk)
+                os.replace(partial, local)
+            except (OSError, requests.RequestException) as exc:
+                raise PipelineError(f"Could not download input for {slot}") from exc
+            finally:
+                if os.path.isfile(partial):
+                    os.unlink(partial)
         paths[slot] = local
     return paths
 
@@ -549,10 +558,15 @@ def _run_stage(graph, info, progress, stage_relay, log_state):
     raise PipelineError("Max retries reached while waiting for stage completion")
 
 
-def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full"):
+def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full", on_artifact=None):
     """Execute all active stages for one generation. Returns result dict."""
+    is_oshified = params.get("method") in oshified.RECIPES
+    if is_oshified:
+        oshified.apply_recipe(params)
+        manifest = oshified.load_manifest(params.get("retry_clip", False))
+    else:
+        manifest = load_manifest()
     _apply_runtime_defaults(params)
-    manifest = load_manifest()
     stages = active_stages(manifest, params)
     total = len(stages)
     gen_dir = os.path.join(WORK_DIR, generation_id)
@@ -595,7 +609,14 @@ def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full
         for index, stage in enumerate(stages):
             name = stage["name"]
             done = state["completed"].get(name)
+            if is_oshified and done is not None and not os.path.isfile(done.get("output") or ""):
+                # If a local file was evicted, re-run this stage and its dependents.
+                for remaining in stages[index:]:
+                    state["completed"].pop(remaining["name"], None)
+                done = None
             if done is not None:
+                if on_artifact and stage["artifact"]:
+                    on_artifact(stage["artifact"], done["output"])
                 logger.info(f"[STAGE {index + 1}/{total}] {name} already complete, resuming past it")
                 if stage.get("output_slot"):
                     if done.get("output"):
@@ -648,7 +669,7 @@ def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full
                 stage_record["output"] = None
             else:
                 output_file = _output_file_from_history(history, prompt_id, info["output_node"])
-                if output_file is None and not stage["final"]:
+                if output_file is None and (stage["artifact"] or not stage["final"]):
                     raise PipelineError(f"Stage {name}: no output file found in history")
                 stage_record["output"] = output_file
                 if output_file:
@@ -662,6 +683,8 @@ def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full
 
             state["completed"][name] = stage_record
             _save_state(state_path, state)
+            if on_artifact and stage["artifact"]:
+                on_artifact(stage["artifact"], stage_record["output"])
             complete_data = {"status": "completed"}
             if index == total - 1:
                 complete_data["resolved_seed"] = seed
@@ -673,5 +696,9 @@ def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full
     except loader.StageLoadError as e:
         raise PipelineError(str(e), stage=name)
 
+    artifacts = {
+        stage["artifact"]: state["completed"][stage["name"]]["output"]
+        for stage in stages if stage["artifact"] in {"still", "clip"}
+    }
     return {"status": "success", "stages": total, "final_output": prev_output,
-            "resolved_seed": seed, "state": state["completed"]}
+            "resolved_seed": seed, "state": state["completed"], "artifacts": artifacts}

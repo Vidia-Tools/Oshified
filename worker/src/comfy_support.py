@@ -16,6 +16,8 @@ import urllib.request
 import requests
 import websocket
 
+from pipeline import oshified
+
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 LOG_WORKFLOW = os.environ.get("LOG_WORKFLOW", "false").lower() == "true"
 HEARTBEAT_INTERVAL = int(os.environ.get("GEN_HEARTBEAT_INTERVAL", 3))
@@ -84,10 +86,10 @@ def validate_input(job_input):
     if not isinstance(params, dict):
         return None, "Missing 'params' object"
     method = params.get("method")
-    if method not in VALID_METHODS:
+    if method not in (*VALID_METHODS, *oshified.RECIPES):
         return None, f"params.method must be one of {VALID_METHODS}"
     prompt = params.get("prompt")
-    if not isinstance(prompt, str) or prompt.strip() == "":
+    if method in VALID_METHODS and (not isinstance(prompt, str) or prompt.strip() == ""):
         return None, "params.prompt is required and must be a non-empty string"
     if not isinstance(params.get("features", {}), dict):
         return None, "params.features must be an object"
@@ -95,6 +97,10 @@ def validate_input(job_input):
         return None, "params.files must be an object"
     params.setdefault("features", {})
     params.setdefault("files", {})
+    if method in oshified.RECIPES:
+        error = oshified.validate_job(generation_id, params)
+        if error:
+            return None, error
 
     # Frontend sends {"type": "preview"|"full", ...} as a top-level sibling of
     # params. Pass it through so the runner can cap preview frames per method.
@@ -113,8 +119,9 @@ def validate_input(job_input):
 class WebSocketProgressRelay:
     """Relay progress updates from the worker to the backend WebSocketManager."""
 
-    def __init__(self, generation_id):
+    def __init__(self, generation_id, attempt=None):
         self.generation_id = generation_id
+        self.attempt = attempt
         self.podId = os.environ.get("RUNPOD_POD_ID") or os.environ.get("HOSTNAME") or "unknown-pod"
         backend_base = os.environ.get("BACKEND_BASE", "").rstrip("/")
         if not backend_base:
@@ -150,6 +157,7 @@ class WebSocketProgressRelay:
     def send_progress(self, event_type, progress_data):
         ok = self._post(self.websocket_relay_url, {
             "generation_id": self.generation_id,
+            **({"attempt": self.attempt} if self.attempt is not None else {}),
             "eventType": event_type,
             "progressData": progress_data,
         })

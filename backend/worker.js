@@ -18,6 +18,7 @@ import { filesRoutes } from './routes/files.js';
 import { videosRoutes } from './routes/videos.js';
 import { generationRoutes } from './routes/generation.js';
 import { miscRoutes } from './routes/misc.js';
+import { oshifiedRoutes } from './routes/oshified.js';
 
 // --- Durable Object re-exports (required by Cloudflare - must be from the main module) ---
 export { LogManager } from './durableObjects/logManager.js';
@@ -27,6 +28,8 @@ export { RunpodRunManager } from './durableObjects/runpodRunManager.js';
 export { VidiaGenerationManager } from './durableObjects/vidiaGenerationManager.js';
 export { WebSocketManager } from './durableObjects/websocketManager.js';
 export { VideoHistoryManager } from './durableObjects/videoHistoryManager.js';
+
+export { OshifiedJobs } from './durableObjects/oshifiedJobs.js';
 
 // --- Router setup ---
 const router = Router();
@@ -42,6 +45,7 @@ generationRoutes(router);  // /api/vidiaGeneration/* (specific routes before wil
 authRoutes(router);        // /api/auth/*
 adminRoutes(router);       // /api/admin/*
 runpodRoutes(router);      // /api/runpod/*
+oshifiedRoutes(router);    // /api/oshified/*
 filesRoutes(router);       // /api/fileUpload/*
 videosRoutes(router);      // /api/videos/*
 	miscRoutes(router);        // /, /ws, /api/payments/*, /api/logging/*, /api/newsletter/*

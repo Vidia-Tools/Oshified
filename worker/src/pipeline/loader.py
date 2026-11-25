@@ -28,6 +28,8 @@ INPUT_FIELD_BY_CLASS = {
     "VHS_LoadVideoPath": "video",
     "LoadImage": "image",
     "LoadImageFromUrl": "image",
+    "LoadImageFromUrlOrPath": "url_or_path",
+    "OshifiedAudioImporter": "audio_file",
 }
 
 # Param key -> candidate input names, tried in order when the key itself is

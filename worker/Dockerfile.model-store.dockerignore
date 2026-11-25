@@ -1,0 +1,11 @@
+*
+!worker/
+!worker/src/
+!worker/src/**
+!workflows/
+!workflows/**
+**/.env
+**/.env.*
+**/.git
+**/__pycache__
+**/.DS_Store

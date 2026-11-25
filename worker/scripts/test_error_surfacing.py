@@ -221,17 +221,17 @@ def test_expected_export_url_construction_and_skip():
         if old is not None:
             os.environ["S3_PUBLIC_URL_PREFIX"] = old
 
-    os.environ["S3_PUBLIC_URL_PREFIX"] = "https://exports.vidia.tools"
+    os.environ["S3_PUBLIC_URL_PREFIX"] = "https://exports.example.com"
     try:
         url = _expected_export_url("gen-456")
-        assert url == "https://exports.vidia.tools/gen-456.mp4", f"got {url}"
+        assert url == "https://exports.example.com/gen-456.mp4", f"got {url}"
     finally:
         os.environ.pop("S3_PUBLIC_URL_PREFIX", None)
 
-    os.environ["S3_PUBLIC_URL_PREFIX"] = "https://exports.vidia.tools/"
+    os.environ["S3_PUBLIC_URL_PREFIX"] = "https://exports.example.com/"
     try:
         url = _expected_export_url("gen-789")
-        assert url == "https://exports.vidia.tools/gen-789.mp4", \
+        assert url == "https://exports.example.com/gen-789.mp4", \
             f"trailing slash must be stripped, got {url}"
     finally:
         os.environ.pop("S3_PUBLIC_URL_PREFIX", None)

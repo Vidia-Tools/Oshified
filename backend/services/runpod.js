@@ -21,13 +21,14 @@ const endpointIdForPlan = (plan, env) => {
 // Function to pause execution for a specified time
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const runEndpointAsync = async (plan, payload, userId, env) => {
+const runEndpointAsync = async (plan, payload, userId, env, { trackLegacyRun = true } = {}) => {
 	try {
 		const runpod = runpodSdk(env.RUNPOD_API_KEY);
 		const endpointId = endpointIdForPlan(plan, env);
 		const endpoint = runpod.endpoint(endpointId);
 		// Wrap payload in input field for RunPod's expected format
 		const response = await endpoint.run({ input: payload });
+		if (!trackLegacyRun) return response;
 		console.log(response);
 		const { id, status } = response;
 
@@ -44,7 +45,7 @@ const runEndpointAsync = async (plan, payload, userId, env) => {
 		// Return the response object so the worker can access the id
 		return response;
 	} catch (e) {
-		console.log(e);
+		console.error('RunPod submission failed', e?.name);
 		// Return error object so the worker can handle it properly
 		return { 
 			error: true, 

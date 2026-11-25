@@ -8,6 +8,7 @@ import { withCallbackSecret } from '../middleware/callback-secret.js';
 import { withAuth } from '../middleware/auth.js';
 import { withRateLimit } from '../middleware/rate-limit.js';
 import { validateParams } from '../utils/validate-params.js';
+import { oshifiedJobs } from './oshified.js';
 import { runEndpointAsync, pollAsyncRunStatus } from '../services/runpod.js';
 
 export function runpodRoutes(router) {
@@ -115,7 +116,13 @@ export function runpodRoutes(router) {
 	// Progress update
 	router.post('/api/runpod/progress', withCallbackSecret, async (request, env) => {
 		try {
-			const { generation_id, eventType, progressData } = await request.json();
+			const { generation_id, attempt, eventType, progressData } = await request.json();
+			if (env.OSHIFIED_JOBS && /^oshified_[a-f0-9]{32}$/.test(generation_id)) {
+				return oshifiedJobs(env).fetch('https://internal/progress', {
+					method: 'POST',
+					body: JSON.stringify({ generation_id, attempt, eventType, progressData }),
+				});
+			}
 
 			const wsManagerId = env.WEBSOCKET_MANAGER.idFromName('default');
 			const wsManager = env.WEBSOCKET_MANAGER.get(wsManagerId);

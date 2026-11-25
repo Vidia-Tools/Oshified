@@ -3,12 +3,18 @@
 # Secrets (JWT_SECRET, RUNPOD_API_KEY, etc.) are NOT set here; use
 # `wrangler secret put NAME` or the root setup.sh. See root .env.example.
 
-name = "vidia-backend"
+name = "oshified-backend"
 main = "worker.js"
 compatibility_date = "2024-10-22"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
+# Values for the Oshified deployment. Keep the Turnstile secret in Wrangler secrets.
+OSHIFIED_API_ORIGIN = ""
+OSHIFIED_POSE_URL = ""
+OSHIFIED_END_CARD_URL = ""
+OSHIFIED_CORNER_WATERMARK_URL = ""
+OSHIFIED_CORNER_MASK_URL = ""
 # Comma-separated list of allowed browser origins for CORS.
 ALLOWED_ORIGINS = "https://app.example.com,https://example.com"
 
@@ -68,7 +74,8 @@ bindings = [
     { name = "RUNPOD_RUN_MANAGER", class_name = "RunpodRunManager" },
     { name = "VIDIA_GENERATION_MANAGER", class_name = "VidiaGenerationManager" },
     { name = "WEBSOCKET_MANAGER", class_name = "WebSocketManager" },
-    { name = "VIDEO_HISTORY_MANAGER", class_name = "VideoHistoryManager" }
+    { name = "VIDEO_HISTORY_MANAGER", class_name = "VideoHistoryManager" },
+    { name = "OSHIFIED_JOBS", class_name = "OshifiedJobs" }
 ]
 
 [[migrations]]
@@ -88,3 +95,7 @@ new_classes = ["WebSocketManager"]
 [[migrations]]
 tag = "v3"
 new_classes = ["VideoHistoryManager"]
+
+[[migrations]]
+tag = "oshified-jobs-v1"
+new_sqlite_classes = ["OshifiedJobs"]
