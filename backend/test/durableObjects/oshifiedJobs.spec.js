@@ -23,7 +23,7 @@ const read = async (jobs, id) => (await jobs.fetch(new Request('https://fixture.
 const extensions = { portrait: "png", still: "jpg", clip: "mp4" };
 const artifact = (jobs, id, kind, attempt = 1) => post(jobs, '/progress', {
 	generation_id: id, attempt, eventType: 'oshified_artifact', progressData: {
-		artifact: kind, key: `oshified/${id}/${kind}.${extensions[kind]}`,
+		artifact: kind, key: `oshified/${id}/attempt-${attempt}/${kind}.${extensions[kind]}`,
 	},
 });
 
@@ -69,12 +69,19 @@ test('keeps a saved portrait through one clip-only retry and ignores old callbac
 	expect((await read(jobs, id)).status).toBe('failed');
 	expect((await post(jobs, '/retry', { id, access: 'wrong' })).status).toBe(404);
 	const retry = await post(jobs, '/retry', { id, access });
-	expect((await retry.json()).attempt).toBe(2);
-	await artifact(jobs, id, 'clip', 1);
+	const queued = await retry.json();
+	expect(queued.attempt).toBe(2);
+	expect(queued.portraitKey).toBe(`oshified/${id}/attempt-1/portrait.png`);
+	expect(await (await artifact(jobs, id, 'clip', 1)).text()).toBe('Stale attempt');
+	const wrongKey = await post(jobs, '/progress', {
+		generation_id: id, attempt: 2, eventType: 'oshified_artifact',
+		progressData: { artifact: 'clip', key: `oshified/${id}/attempt-1/clip.mp4` },
+	});
+	expect(wrongKey.status).toBe(400);
 	expect((await read(jobs, id)).status).toBe('queued');
 	expect((await post(jobs, '/retry', { id, access })).status).toBe(409);
-	await artifact(jobs, id, 'clip', 2);
+	expect((await artifact(jobs, id, 'clip', 2)).status).toBe(200);
 	expect((await read(jobs, id)).artifacts).toEqual({
-		still: `oshified/${id}/still.jpg`, clip: `oshified/${id}/clip.mp4`,
+		still: `oshified/${id}/attempt-1/still.jpg`, clip: `oshified/${id}/attempt-2/clip.mp4`,
 	});
 });

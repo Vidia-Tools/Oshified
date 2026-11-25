@@ -94,7 +94,7 @@ export class OshifiedJobs {
 				if (eventType === 'oshified_artifact') {
 					const { artifact, key: objectKey } = progressData || {};
 					if (!Object.hasOwn(ARTIFACTS, artifact) ||
-						objectKey !== `oshified/${id}/${artifact}.${ARTIFACTS[artifact]}`) {
+						objectKey !== `oshified/${id}/attempt-${attempt}/${artifact}.${ARTIFACTS[artifact]}`) {
 						return new Response('Invalid artifact', { status: 400 });
 					}
 					if (artifact === 'portrait') job.portraitKey = objectKey;

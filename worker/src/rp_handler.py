@@ -120,7 +120,8 @@ def handler(job):
         logger.once("job_start", f"[JOB] start generation_id={generation_id} user_id={user_id}")
 
         is_oshified = params["method"] in oshified.RECIPES
-        relay = WebSocketProgressRelay(generation_id, params.get("attempt", 1) if is_oshified else None)
+        attempt = params.get("attempt", 1) if is_oshified else None
+        relay = WebSocketProgressRelay(generation_id, attempt)
         check_server(
             f"http://{COMFY_HOST}",
             COMFY_API_AVAILABLE_MAX_RETRIES,
@@ -155,7 +156,7 @@ def handler(job):
         start_time = time.time()
         try:
             if is_oshified:
-                delivery = OshifiedDelivery(generation_id, relay)
+                delivery = OshifiedDelivery(generation_id, attempt, relay)
                 result = runner.run_pipeline(generation_id, user_id, params, relay, progress,
                                              on_artifact=delivery)
             else:

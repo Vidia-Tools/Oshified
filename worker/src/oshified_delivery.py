@@ -11,8 +11,9 @@ class ArtifactDeliveryError(RuntimeError):
 
 
 class OshifiedDelivery:
-    def __init__(self, generation_id, relay):
+    def __init__(self, generation_id, attempt, relay):
         self.generation_id = generation_id
+        self.attempt = attempt
         self.relay = relay
         self.client = None
         self.bucket = None
@@ -34,7 +35,7 @@ class OshifiedDelivery:
         path = Path(file_path)
         if path.suffix.lower() != f".{extension}" or not path.is_file():
             raise ArtifactDeliveryError(f"Missing {artifact} output")
-        key = f"oshified/{self.generation_id}/{artifact}.{extension}"
+        key = f"oshified/{self.generation_id}/attempt-{self.attempt}/{artifact}.{extension}"
         try:
             if self.client is None:
                 self._configure_storage()
