@@ -1,4 +1,19 @@
-# Vidia Open Studio
+# Oshified
+
+Oshified is an AGPL-3.0-only application built directly from Vidia Open Studio.
+It uses Open Studio's ComfyUI workflows, stage runner, local app server, and
+RunPod worker to power two guided modes for turning a photo into a VTuber
+portrait or imagining a VTuber as a real-looking character, followed by an
+audio-driven clip. The separate Oshified node pack descends from
+Vidia-Open-Studio-Nodes.
+
+Start with the [Oshified setup](DEPLOY.md#oshified-setup) to run locally or
+assemble an isolated hosted release. The inherited Open Studio reference
+below explains the underlying studio and its other workflows.
+
+---
+
+## Vidia Open Studio reference
 
 Open-source AI video generation studio. A Vite SPA frontend, a Cloudflare
 Worker backend, and a ComfyUI-based GPU worker that runs on RunPod serverless

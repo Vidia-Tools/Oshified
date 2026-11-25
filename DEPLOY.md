@@ -1,4 +1,163 @@
-# Vidia Open Studio - Deployment Guide
+# Deployment
+
+## Oshified setup
+
+Oshified uses the Open Studio runtime and a separate, pinned Oshified node
+pack. It can run on a local ComfyUI installation with model weights on disk.
+The hosted build below uses the public Vidia worker image as its base and
+loads model weights from Backblaze B2 into the worker's local cache.
+
+### Local development
+
+1. Start ComfyUI v0.25.1 on `127.0.0.1:8188`. Install the Oshified
+   node pack at the chosen Git commit and the four custom-node dependencies listed
+   in `worker/scripts/package_oshified_release.py` in ComfyUI's
+   `custom_nodes` directory. The Oshified pack also registers the inherited
+   Vidia node IDs, so use a ComfyUI node directory with a single copy of the
+   Vidia/Oshified pack. Install each package's requirements in ComfyUI's
+   Python environment. Add the graph's model files to the matching categories in
+   ComfyUI's `models` directory. Install FFmpeg, and for YouTube audio install
+   [Deno](https://docs.deno.com/runtime/getting_started/installation/) 2.3 or later.
+2. Run the local app server from the repository root with operator-provided
+   assets. Use absolute paths for a pose reference image and three
+   videos at 16 fps: end card, corner watermark, and corner mask.
+
+   ```bash
+   COMFY_OUTPUT_DIR=/path/to/ComfyUI/output VIDIA_MODE=local \
+   OSHIFIED_POSE_FILE=/path/to/pose.png \
+   OSHIFIED_END_CARD_FILE=/path/to/end-card.mp4 \
+   OSHIFIED_CORNER_WATERMARK_FILE=/path/to/corner.mp4 \
+   OSHIFIED_CORNER_MASK_FILE=/path/to/corner-mask.mp4 \
+   python worker/src/app_server.py --host 127.0.0.1 --port 8189
+   ```
+
+3. Start the wizard from another shell, using the same origin and port as
+   shown. Set `OSHIFIED_LOCAL_FRONTEND_PORT` on the app server if you change the
+   frontend port.
+
+   ```bash
+   cd frontend
+   npm ci
+   VITE_OSHIFIED_API_ORIGIN=http://127.0.0.1:8189 npm run dev -- --host 127.0.0.1 --port 3000 --strictPort
+   ```
+
+To offer optional examples in the avatar-to-real mode, set
+`VITE_OSHIFIED_PRESETS_JSON` to an array of objects with `id` and `name`,
+plus any of `imageUrl`, `previewAudio`, and `audioUrl`. Use media you can
+share. Give assets same-origin static paths or HTTPS URLs that allow the
+app's origin to fetch them. An `audioUrl` can also be a YouTube link.
+
+Local generation runs on the workstation with its local model files and media.
+Local jobs are available for the lifetime of the app-server process. The
+loopback wizard requires only the local app server and ComfyUI.
+
+To exercise the pipeline without private assets, install Pillow in the local
+Python environment, then run `python worker/scripts/make_oshified_demo_media.py /tmp/oshified-demo`
+with FFmpeg on `PATH`. Use its `pose.png`, `end-card.mp4`, `corner.mp4`, and
+`corner-mask.mp4` as operator assets. Upload `avatar.png` or `natural.png`
+and `voice-formant.wav` through the wizard. The generated media is synthetic
+and tests the pipeline. The workflow still needs its model weights.
+
+### Build the hosted worker image
+
+Use Docker Buildx on a builder that supports `linux/amd64`. The helper loads
+a locally tagged image. The build extends the Linux amd64 digest of
+`federicobuilds/vidia-open-studio` pinned in
+[`build_oshified_worker.sh`](worker/scripts/build_oshified_worker.sh), reuses
+[`Dockerfile.model-store`](worker/Dockerfile.model-store), and installs the
+Oshified node dependencies plus a pinned Deno runtime for YouTube. The
+image includes workflow, worker and custom-node source. Model weights are
+fetched and checked by the worker on demand from the operator's model store.
+
+Prepare a reviewed release directory containing:
+
+- `manifest.json`, a version 1 model manifest accepted by
+  `worker/src/model_assets.py` with relative model paths, object keys, sizes,
+  and SHA-256 checksums. The operator's model bucket must contain the objects
+  named in this manifest.
+- `nodes/` containing reviewed source snapshots of
+  `ComfyUI-load-image-from-url`, `comfyui-videohelpersuite`,
+  `comfyui_controlnet_aux`, and `comfyui_essentials`. Retain the corresponding
+  upstream source revisions and license notices with the release record.
+
+From the app checkout, provide the separately checked out Oshified nodes
+repository and its full release commit SHA:
+
+```bash
+python3 worker/scripts/package_oshified_release.py \
+  --dependencies /path/to/reviewed-dependency-release \
+  --node-repo /path/to/oshified-nodes \
+  --node-revision "<full Oshified nodes commit SHA>" \
+  --output /path/to/new-oshified-release-context
+worker/scripts/build_oshified_worker.sh /path/to/new-oshified-release-context oshified-worker:local
+```
+
+The packaging helper exports the commit into the inherited
+`vidia-open-studio-node` slot and writes `release-receipt.json` with the
+commit, manifest hash, and package content hashes. Compare the receipt
+against the one for the release you intend to rebuild. This Docker target
+starts the worker and workflows baked from the app checkout. Record the app
+commit, node commit, release receipt, and final image digest together when
+cutting a release.
+
+### Isolated hosted configuration
+
+Use separate test resources for Cloudflare Pages, the Cloudflare Worker and
+its private R2 buckets, the RunPod endpoint, and the Backblaze B2 model bucket.
+
+- **Pages build** from `frontend/` with `npm ci` and `npm run build`. Serve
+  `dist/`. Set `VITE_OSHIFIED_API_ORIGIN=https://api.example.com` and
+  `VITE_OSHIFIED_TURNSTILE_SITE_KEY` in the build environment or in
+  `frontend/.env.production`. Use your own Turnstile site key for the test
+  frontend's hostname. Set `VITE_OSHIFIED_SOURCE_URL` to the HTTPS URL for
+  the exact corresponding source of the hosted app. The wizard exposes it
+  as a Source code link. These Vite values are public.
+- **Cloudflare Worker** starts from `backend/wrangler.toml.example`. Set
+  `OSHIFIED_API_ORIGIN=https://api.example.com` and configure your approved
+  HTTPS media with `OSHIFIED_POSE_URL`, `OSHIFIED_END_CARD_URL`,
+  `OSHIFIED_CORNER_WATERMARK_URL`, and `OSHIFIED_CORNER_MASK_URL`. Add the
+  frontend to `ALLOWED_ORIGINS`, set `RUNPOD_BASIC_ENDPOINT_ID` to the isolated
+  endpoint, and configure the `OSHIFIED_JOBS` Durable Object binding and
+  migration plus the private `IMPORTS_BUCKET` and `EXPORTS_BUCKET` bindings.
+  Set `JWT_SECRET`, `TURNSTILE_SECRET_KEY`, `RUNPOD_API_KEY`, and
+  `RUNPOD_CALLBACK_SECRET` as Worker secrets.
+- **RunPod worker** uses the staged image digest. Set
+  `BACKEND_BASE=https://api.example.com` and the matching
+  `RUNPOD_CALLBACK_SECRET`. Configure private output uploads with
+  `S3_ENDPOINT_URL`, `S3_BUCKET_NAME`, `S3_ACCESS_KEY_ID`, and
+  `S3_SECRET_ACCESS_KEY`. Set `S3_REGION_NAME` when required by the
+  provider. Point this configuration to the same private exports bucket as
+  the backend. The frontend accesses private outputs through the API.
+- **Backblaze B2 model store** uses `MODEL_STORE_ENDPOINT`,
+  `MODEL_STORE_REGION`, `MODEL_STORE_BUCKET`, `MODEL_STORE_KEY_ID`, and
+  `MODEL_STORE_APP_KEY` on RunPod. Use a read-only application key scoped
+  to the model bucket/prefix. Configure model-store credentials separately
+  from private output-upload credentials.
+
+Keep tokens, credentials, reference media, and model weights outside the
+public application checkout. For source publication, review the complete
+source set and accompanying node and dependency licenses, notices, and
+redistribution permissions. Ship operator paths and configuration examples
+with the source.
+
+### Release verification and rollout
+
+Qualify both guided modes using an uploaded image and audio in the isolated
+environment. Test the YouTube input separately with an authorized test link.
+Verify that a finished portrait reaches the wizard, its output feeds the
+clip, and the final media plays and downloads. Exercise clip retry and
+access controls. With B2, verify actual model preparation progress on a cold
+worker and cache reuse on a warm worker.
+
+Image publication, isolated infrastructure setup, and any production cutover
+are separate deployment actions. Production traffic and network-volume
+retirement each require their own approval. Record the previously serving
+application, worker image, routing, and storage before a cutover so the
+operator can restore them.
+
+---
+
+## Vidia Open Studio deployment reference
 
 How to deploy your own hosted instance: Cloudflare Pages (frontend), a
 Cloudflare Worker (backend), and a RunPod serverless endpoint (GPU worker).

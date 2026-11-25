@@ -73,7 +73,7 @@ function isForbidden(relPath) {
 }
 
 // Required safe template files that MUST exist in the release set.
-const REQUIRED_TEMPLATES = ['.env.example', 'backend/wrangler.toml.example'];
+const REQUIRED_TEMPLATES = ['LICENSE', '.env.example', 'backend/wrangler.toml.example'];
 
 // Example/template files are exempt from infrastructure-value and
 // secret-variable-assignment checks (placeholders are expected there).
@@ -152,19 +152,19 @@ function isPlaceholder(raw) {
 // Hard secret patterns: applied to ALL included text files (including examples,
 // since a real live key must never be committed anywhere).
 const HARD_PATTERNS = [
-  { re: /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/, label: 'private key block' },
-  { re: /sk_live_[A-Za-z0-9]{20,}/, label: 'Stripe live secret key' },
-  { re: /whsec_[A-Za-z0-9]{20,}/, label: 'Stripe webhook secret' },
-  { re: /AKIA[0-9A-Z]{16}/, label: 'AWS access key id' },
-  { re: /ghp_[A-Za-z0-9]{36,}/, label: 'GitHub personal access token' },
-  { re: /xox[baprs]-[A-Za-z0-9-]{10,}/, label: 'Slack token' },
+  { re: /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/g, label: 'private key block' },
+  { re: /sk_live_[A-Za-z0-9]{20,}/g, label: 'Stripe live secret key' },
+  { re: /whsec_[A-Za-z0-9]{20,}/g, label: 'Stripe webhook secret' },
+  { re: /AKIA[0-9A-Z]{16}/g, label: 'AWS access key id' },
+  { re: /ghp_[A-Za-z0-9]{36,}/g, label: 'GitHub personal access token' },
+  { re: /xox[baprs]-[A-Za-z0-9-]{10,}/g, label: 'Slack token' },
 ];
 
 // Infrastructure-value patterns: applied only to NON-example config files.
 const INFRA_PATTERNS = [
-  { re: /\baccount_id\s*=\s*["']?[0-9a-f]{32}["']?/i, label: 'Cloudflare account_id (32-hex)' },
-  { re: /\bACCOUNT_ID\s*=\s*["']?[0-9a-f]{32}["']?/, label: 'ACCOUNT_ID (32-hex)' },
-  { re: /\bid\s*=\s*["']?[0-9a-f]{32}["']?/, label: 'KV/namespace id (32-hex)' },
+  { re: /\baccount_id\s*=\s*["']?[0-9a-f]{32}["']?/gi, label: 'Cloudflare account_id (32-hex)' },
+  { re: /\bACCOUNT_ID\s*=\s*["']?[0-9a-f]{32}["']?/g, label: 'ACCOUNT_ID (32-hex)' },
+  { re: /\bid\s*=\s*["']?[0-9a-f]{32}["']?/g, label: 'KV/namespace id (32-hex)' },
 ];
 
 // RunPod endpoint ID assignment with a non-placeholder value.
@@ -172,17 +172,16 @@ const RUNPOD_ENDPOINT_RE =
   /\bRUNPOD_[A-Z_]*ENDPOINT_ID\s*=\s*["']?([A-Za-z0-9_-]+)["']?/g;
 
 // Real production domain in non-example config files.
-const VIDIA_TOOLS_RE = /\bvidia\.tools\b/;
+const VIDIA_TOOLS_RE = /\bvidia\.tools\b/g;
 
 // Secret-variable assignment with a real (non-placeholder) value.
 const SECRET_VAR_RE =
-  /\b(JWT_SECRET|RUNPOD_CALLBACK_SECRET|RUNPOD_API_KEY|EMAIL_API_KEY|MAILERLITE_API_KEY|TURNSTILE_SECRET_KEY_[A-Z]+|S3_SECRET_ACCESS_KEY|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|HF_TOKEN|CIVITAI_TOKEN|OPENROUTER_API_KEY)\s*[=:]\s*["']?([A-Za-z0-9_\-]+)["']?/g;
+  /\b(JWT_SECRET|RUNPOD_CALLBACK_SECRET|RUNPOD_API_KEY|EMAIL_API_KEY|MAILERLITE_API_KEY|TURNSTILE_SECRET_KEY(?:_[A-Z]+)?|MODEL_STORE_KEY_ID|MODEL_STORE_APP_KEY|S3_SECRET_ACCESS_KEY|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|HF_TOKEN|CIVITAI_TOKEN|OPENROUTER_API_KEY)\s*[=:]\s*["']?([A-Za-z0-9_\-]+)["']?/g;
 
 function scanContent(relPath, content) {
   const findings = [];
   const example = isExampleOrTemplate(relPath);
   const config = isConfigFile(relPath);
-  const lines = content.split('\n');
 
   const lineOf = (idx) => {
     let n = 1;
@@ -234,7 +233,7 @@ function scanContent(relPath, content) {
       findings.push({
         path: relPath,
         line: lineOf(vm.index),
-        label: 'real vidia.tools deployment domain in config',
+        label: 'Vidia production domain in config',
       });
       if (vm.index === VIDIA_TOOLS_RE.lastIndex) VIDIA_TOOLS_RE.lastIndex++;
     }
@@ -457,7 +456,7 @@ function runSelfTest() {
   {
     const findings = scanContent(
       'synthetic/config.toml',
-      'JWT_SECRET = "-----BEGIN RSA PRIVATE KEY-----abcd"',
+      'JWT_SECRET = "-----BEGIN RSA ' + 'PRIVATE KEY-----abcd"',
     );
     const ok = findings.some((f) => f.label.includes('private key block'));
     lines.push(`[4] private key block detected -> ${ok ? 'detected (expected)' : 'missed (BAD)'}`);
@@ -467,7 +466,7 @@ function runSelfTest() {
   // 5. A real Cloudflare account_id (32-hex) in a non-example config file must
   //    be flagged, while the same value in an example file must NOT.
   {
-    const real = 'account_id = "cb5a472009030142b598cddb8e98f733"';
+    const real = 'account_id = "' + 'a'.repeat(32) + '"';
     const realFindings = scanContent('synthetic/wrangler.toml', real);
     const exFindings = scanContent('synthetic/wrangler.toml.example', real);
     const realOk = realFindings.some((f) => f.label.includes('account_id'));
@@ -485,7 +484,7 @@ function runSelfTest() {
     );
     const realVal = scanContent(
       'synthetic/wrangler.toml',
-      'RUNPOD_BASIC_ENDPOINT_ID = "pa7spb8nax9idw"',
+      'RUNPOD_BASIC_ENDPOINT_ID = "' + 'a'.repeat(14) + '"',
     );
     const phOk = placeholder.length === 0;
     const realOk = realVal.some((f) => f.label.includes('RunPod endpoint ID'));

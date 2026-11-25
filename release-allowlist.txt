@@ -1,4 +1,4 @@
-# Vidia Open Studio - release allowlist
+# Oshified - release allowlist
 #
 # Explicit list of files/directories intended for public open-source release.
 # Consumed by scripts/release-check.mjs. One pattern per line. Blank lines and
@@ -21,6 +21,7 @@
 # --- Root metadata, docs, scripts ---
 .gitignore
 .env.example
+LICENSE
 README.md
 DEPLOY.md
 KNOWN_ISSUES.md
