@@ -83,7 +83,7 @@ function mediaLink(origin, id, type, access) {
 	return url.href;
 }
 
-function objectResponse(object, download) {
+function objectResponse(object, download, rangeRequested = false) {
 	if (!object) return new Response(null, { status: 404 });
 	const headers = new Headers({
 		'Cache-Control': 'private, no-store',
@@ -92,7 +92,8 @@ function objectResponse(object, download) {
 	});
 	object.writeHttpMetadata(headers);
 	if (download) headers.set('Content-Disposition', `attachment; filename="oshified-${download}"`);
-	const { range, size } = object;
+	const { size } = object;
+	const range = rangeRequested ? object.range : undefined;
 	const start = range?.offset ?? (range?.suffix ? Math.max(0, size - range.suffix) : 0);
 	const length = range?.length ?? (range?.suffix ? Math.min(size, range.suffix) : size - start);
 	headers.set('Content-Length', String(length));
@@ -244,6 +245,8 @@ export function oshifiedRoutes(router) {
 		}
 		const download = new URL(request.url).searchParams.get('download') === '1';
 		const filename = download ? (kind === 'clip' ? 'clip.mp4' : 'portrait.jpg') : undefined;
-		return objectResponse(await env.EXPORTS_BUCKET.get(job.artifacts[kind], { range: request.headers }), filename);
+		const rangeRequested = request.headers.has('Range');
+		const options = rangeRequested ? { range: request.headers } : undefined;
+		return objectResponse(await env.EXPORTS_BUCKET.get(job.artifacts[kind], options), filename, rangeRequested);
 	});
 }
