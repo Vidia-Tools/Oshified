@@ -43,6 +43,6 @@ export default defineConfig({
   server: {
     // Dev server settings for local development
     port: 3000,
-    open: '/dashboard.html',
+    open: '/',
   },
 });
