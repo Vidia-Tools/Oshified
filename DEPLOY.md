@@ -18,7 +18,8 @@ loads model weights from Backblaze B2 into the worker's local cache.
    Python environment. Add the graph's model files to the matching categories in
    ComfyUI's `models` directory. Install FFmpeg, and for YouTube audio install
    [Deno](https://docs.deno.com/runtime/getting_started/installation/) 2.3 or later.
-2. Run the local app server from the repository root with operator-provided
+2. Use an app-server Python environment with Pillow, requests and
+   websocket-client. Run the local app server from the repository root with operator-provided
    assets. Use absolute paths for a pose reference image and three
    videos at 16 fps: end card, corner watermark, and corner mask.
 
