@@ -13,10 +13,8 @@ if [ ! -f "$release_dir/release-receipt.json" ]; then
 fi
 
 app_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-worker_image='federicobuilds/vidia-open-studio@sha256:5ddc440dc770f96ef93d932f17c787cc31c3cbf4edc4a45bc7d9a6ca90793638'
 
 docker buildx build --load --platform linux/amd64 --target oshified \
-    --build-arg "WORKER_IMAGE=$worker_image" \
     --build-context "model_release=$release_dir" \
     --file "$app_dir/worker/Dockerfile.model-store" \
     --tag "$2" "$app_dir"

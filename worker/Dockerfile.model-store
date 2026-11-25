@@ -1,6 +1,7 @@
-# Build from the Vidia repo with --build-context model_release=<release directory>.
-ARG WORKER_IMAGE
-FROM ${WORKER_IMAGE} AS model-store
+# Build from the repo with --build-context model_release=<release directory>.
+ARG WORKER_IMAGE=federicobuilds/vidia-open-studio@sha256:5ddc440dc770f96ef93d932f17c787cc31c3cbf4edc4a45bc7d9a6ca90793638
+ARG WORKER_PLATFORM=linux/amd64
+FROM --platform=$WORKER_PLATFORM ${WORKER_IMAGE} AS model-store
 COPY worker/src/ /src/
 COPY workflows/ /workflows/
 COPY --from=model_release nodes/ /opt/model-release/nodes/
@@ -19,7 +20,7 @@ ENV DEPLOYMENT_MODE=serverless \
 CMD ["/bin/bash", "/src/start.sh"]
 
 # The Linux amd64 binary from denoland/deno:bin-2.9.6 supports yt-dlp's EJS.
-FROM denoland/deno@sha256:456e1a0fada18d727c3f38eb4937218c1b46924c832b713dcf9358eb32ff15a6 AS deno
+FROM --platform=$WORKER_PLATFORM denoland/deno@sha256:456e1a0fada18d727c3f38eb4937218c1b46924c832b713dcf9358eb32ff15a6 AS deno
 
 FROM model-store AS oshified
 COPY --from=deno /deno /usr/local/bin/deno

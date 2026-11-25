@@ -64,8 +64,7 @@ and tests the pipeline. The workflow still needs its model weights.
 Use Docker Buildx on a builder that supports `linux/amd64`. The helper loads
 a locally tagged image. The build extends the Linux amd64 digest of
 `federicobuilds/vidia-open-studio` pinned in
-[`build_oshified_worker.sh`](worker/scripts/build_oshified_worker.sh), reuses
-[`Dockerfile.model-store`](worker/Dockerfile.model-store), and installs the
+[`Dockerfile.model-store`](worker/Dockerfile.model-store) and installs the
 Oshified node dependencies plus a pinned Deno runtime for YouTube. The
 image includes workflow, worker and custom-node source. Model weights are
 fetched and checked by the worker on demand from the operator's model store.
