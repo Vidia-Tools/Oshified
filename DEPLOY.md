@@ -123,8 +123,15 @@ its private R2 buckets, the RunPod endpoint, and the Backblaze B2 model bucket.
   endpoint, and configure the `OSHIFIED_JOBS` Durable Object binding and
   migration plus the private `IMPORTS_BUCKET` and `EXPORTS_BUCKET` bindings.
   Set `JWT_SECRET`, `TURNSTILE_SECRET_KEY`, `RUNPOD_API_KEY`, and
-  `RUNPOD_CALLBACK_SECRET` as Worker secrets.
-- **RunPod worker** uses the staged image digest. Set
+  `RUNPOD_CALLBACK_SECRET` as Worker secrets. `OSHIFIED_JOB_LEASE_MINUTES`
+  defaults to 45 and accepts whole minutes from 30 to 120. It covers queue
+  time, worker startup, generation, and delivery of the final callback. A
+  job retains its configured lease for a clip retry.
+- **RunPod worker** uses the staged image digest. Start staging with a
+  35-minute execution timeout and a 45-minute application lease. One private
+  Montréal H200 cold run took 26.5 minutes before queue and image startup.
+  Measure those intervals on the final hosted build and adjust both limits
+  before cutover. Set
   `BACKEND_BASE=https://api.example.com` and the matching
   `RUNPOD_CALLBACK_SECRET`. Configure private output uploads with
   `S3_ENDPOINT_URL`, `S3_BUCKET_NAME`, `S3_ACCESS_KEY_ID`, and

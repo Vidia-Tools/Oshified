@@ -1,15 +1,24 @@
-const JOB_LEASE = 30 * 60 * 1000;
+const MINUTE = 60 * 1000;
+const PREVIOUS_JOB_LEASE = 30 * MINUTE;
+const DEFAULT_JOB_LEASE_MINUTES = 45;
+
+function configuredLease(value) {
+	const minutes = Number(value);
+	return (Number.isInteger(minutes) && minutes >= 30 && minutes <= 120
+		? minutes : DEFAULT_JOB_LEASE_MINUTES) * MINUTE;
+}
 const DAILY_LIMIT = 5;
 const ARTIFACTS = { portrait: 'png', still: 'jpg', clip: 'mp4' };
 const isTerminal = (status) => status === 'complete' || status === 'failed';
 export const canRetryClip = (job, now = Date.now()) =>
 	job.status === 'failed' && !job.timedOut && Boolean(job.artifacts.still && job.portraitKey) &&
-	!job.retryUsed && now < job.createdAt + JOB_LEASE * 2;
+	!job.retryUsed && now < job.createdAt + (job.leaseMs ?? PREVIOUS_JOB_LEASE) * 2;
 
 
 export class OshifiedJobs {
-	constructor(state) {
+	constructor(state, env = {}) {
 		this.storage = state.storage;
+		this.leaseMs = configuredLease(env.OSHIFIED_JOB_LEASE_MINUTES);
 	}
 
 	async fetch(request) {
@@ -34,8 +43,8 @@ export class OshifiedJobs {
 				const quotaKey = 'quota:' + day + ':' + record.owner;
 				const count = (await txn.get(quotaKey)) || 0;
 				if (count >= DAILY_LIMIT) return new Response(null, { status: 429 });
-				const expiresAt = now + JOB_LEASE;
-				const job = { ...record, attempt: 1, status: 'queued', createdAt: now, expiresAt, artifacts: {}, progress: { phase: 'starting' } };
+				const expiresAt = now + this.leaseMs;
+				const job = { ...record, attempt: 1, status: 'queued', createdAt: now, expiresAt, leaseMs: this.leaseMs, artifacts: {}, progress: { phase: 'starting' } };
 				await txn.put({
 					[activeKey]: { id: record.id, expiresAt },
 					[quotaKey]: count + 1,
@@ -60,7 +69,7 @@ export class OshifiedJobs {
 				job.status = 'queued';
 				job.error = null;
 				job.progress = { phase: 'starting', stageName: 'clip' };
-				job.expiresAt = now + JOB_LEASE;
+				job.expiresAt = now + (job.leaseMs ?? PREVIOUS_JOB_LEASE);
 				await txn.put({ [key]: job, [activeKey]: { id, expiresAt: job.expiresAt } });
 				return Response.json(job);
 			});

@@ -11,6 +11,8 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 # Values for the Oshified deployment. Keep the Turnstile secret in Wrangler secrets.
 OSHIFIED_API_ORIGIN = ""
+# Includes queue, worker startup, execution and final callback.
+OSHIFIED_JOB_LEASE_MINUTES = "45"
 OSHIFIED_POSE_URL = ""
 OSHIFIED_END_CARD_URL = ""
 OSHIFIED_CORNER_WATERMARK_URL = ""
