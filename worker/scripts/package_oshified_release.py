@@ -22,6 +22,10 @@ DEPENDENCIES = (
 NODE_SLOT = "vidia-open-studio-node"
 SOURCE_SUFFIXES = {".py", ".json", ".yaml", ".yml", ".txt", ".md", ".toml", ".js", ".ttf"}
 NOTICE_NAMES = {"LICENSE", "NOTICE", "COPYING"}
+FONT_SHA256 = {
+    "comfyui_controlnet_aux/NotoSans-Regular.ttf": "6b04c8dd65af6b73eb4279472ed1580b29102d6496a377340e80a40cdb3b22c9",
+    "comfyui_essentials/fonts/ShareTechMono-Regular.ttf": "911a85f56c44e8a712458513e6972a3e296ee9a84e70754462d03de3f3609c2b",
+}
 
 
 def is_source(path):
@@ -77,6 +81,18 @@ def sha256(path):
     return digest.hexdigest()
 
 
+def add_font_notices(nodes):
+    notices = Path(__file__).resolve().parents[1] / "licenses"
+    for relative, expected in FONT_SHA256.items():
+        font = nodes / relative
+        notice = font.with_suffix(".OFL.txt")
+        if not font.is_file() or notice.is_file():
+            continue
+        if sha256(font) != expected:
+            raise ValueError(f"Include the matching license notice next to {relative}")
+        shutil.copyfile(notices / notice.name, notice)
+
+
 def package_digest(directory):
     rows = [
         (file.relative_to(directory).as_posix(), sha256(file))
@@ -106,6 +122,7 @@ def package(dependencies, node_repo, node_revision, output):
         for directory in DEPENDENCIES:
             copy_dependency(dependencies / "nodes" / directory, nodes / directory)
         export_node(node_repo, node_revision, nodes / NODE_SLOT)
+        add_font_notices(nodes)
         receipt = {
             "manifest_sha256": sha256(context / "manifest.json"),
             "node_revision": node_revision,

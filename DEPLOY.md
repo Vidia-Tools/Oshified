@@ -79,6 +79,9 @@ Prepare a reviewed release directory containing:
   `comfyui-videohelpersuite`, `comfyui_controlnet_aux`, and
   `comfyui_essentials`. Retain the corresponding
   upstream source revisions and license notices with the release record.
+  The helper adds the OFL notices for the verified Noto Sans Regular and
+  Share Tech Mono font binaries. If a dependency snapshot changes its font,
+  supply that font's matching `.OFL.txt` beside the `.ttf`.
 
 From the app checkout, provide the separately checked out Oshified nodes
 repository and its full release commit SHA:
