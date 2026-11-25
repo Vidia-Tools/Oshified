@@ -20,7 +20,7 @@ SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
 sys.path.insert(0, SRC)
 
 PROMPT_ID = "mock-prompt-1"
-OUTPUT_FILENAME = "gen_test_output_00001.mp4"
+OUTPUT_FILENAME = "gen_test_00001.mp4"
 
 
 def free_port():
@@ -126,7 +126,7 @@ def main():
 
     # Runner injected the filename_prefix through the loader
     graph = MockComfy.last_graph
-    assert graph["1"]["inputs"]["filename_prefix"] == "gen_test_output", graph
+    assert graph["1"]["inputs"]["filename_prefix"] == "gen_test", graph
 
     # Stage events were relayed with stage metadata under the canonical key
     seen = []
