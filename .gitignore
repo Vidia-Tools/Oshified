@@ -3,6 +3,7 @@
 node_modules/
 dist/
 .wrangler/
+/backend/wrangler.toml
 __pycache__/
 *.pyc
 *.pyo
