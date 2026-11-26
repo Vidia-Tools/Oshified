@@ -133,6 +133,9 @@ its private R2 buckets, the RunPod endpoint, and the Backblaze B2 model bucket.
   defaults to 45 and accepts whole minutes from 30 to 120. It covers queue
   time, worker startup, generation, and delivery of the final callback. A
   job retains its configured lease for a clip retry.
+- For `RUNPOD_API_KEY`, create a [Restricted Runpod key](https://docs.runpod.io/get-started/credentials)
+  with read/write access to the Oshified endpoint and no account-level API
+  access. The Cloudflare Worker needs to submit jobs and check their status.
 - **RunPod worker** uses the staged image digest. Start staging with a
   35-minute execution timeout and a 45-minute application lease. One private
   Montréal H200 cold run took 26.5 minutes before queue and image startup.
