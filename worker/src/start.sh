@@ -35,7 +35,11 @@ else
 fi
 
 # Fix for cg-quicknodes pyarrow dependency
-/usr/bin/python3 -m pip install -U pyarrow datasets >/dev/null 2>&1 || true
+# Model-store images bundle their node dependencies at build time. Upgrading
+# datasets here can replace the Hugging Face Hub version required by ComfyUI.
+if [ -z "${MODEL_STORE_MANIFEST:-}" ]; then
+    /usr/bin/python3 -m pip install -U pyarrow datasets >/dev/null 2>&1 || true
+fi
 
 # --- Patch for RES4LYF ---
 if grep -q "from utils.install_util import" /ComfyUI/app/frontend_management.py 2>/dev/null; then
