@@ -74,7 +74,13 @@ Prepare a reviewed release directory containing:
 - `manifest.json`, a version 1 model manifest accepted by
   `worker/src/model_assets.py` with relative model paths, object keys, sizes,
   and SHA-256 checksums. The operator's model bucket must contain the objects
-  named in this manifest.
+  named in this manifest. To prepare a bucket for the public worker image,
+  upload the supported model versions under `models/<sha256>` using the
+  hashes in its bundled manifest. To build an image with your own object
+  prefix, run `python3 worker/scripts/build_model_manifest.py /path/to/models --prefix models`
+  and save the output as `manifest.json`. Add selectors for any runtime-only
+  dependencies or model aliases in a customized workflow, as described in
+  [the worker guide](worker/README.md#optional-model-store-for-volume-free-deployment).
 - `nodes/` containing reviewed source snapshots of
   `comfyui-videohelpersuite`, `comfyui_controlnet_aux`, and
   `comfyui_essentials`. Retain the corresponding
