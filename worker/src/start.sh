@@ -291,7 +291,7 @@ elif [ "$DEPLOYMENT_MODE" = "serverless" ]; then
     COMFY_READY_PERCENT=90
 
     is_http_ready() {
-        curl -sf -m 1 "http://127.0.0.1:8188" >/dev/null 2>&1
+        curl -sf -m 1 "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1
     }
 
     send_heartbeat() {
@@ -317,7 +317,9 @@ elif [ "$DEPLOYMENT_MODE" = "serverless" ]; then
             CURRENT_STEP="http_ready"
         fi
 
-        if grep -q "All startup tasks have been completed" /tmp/comfy.log 2>/dev/null; then
+        # Bundled workers do not depend on ComfyUI Manager or its startup log.
+        if { [ -n "${MODEL_STORE_MANIFEST:-}" ] && [ "$CURRENT_PERCENT" -ge "$HTTP_READY_PERCENT" ]; } ||
+            { [ -z "${MODEL_STORE_MANIFEST:-}" ] && grep -q "All startup tasks have been completed" /tmp/comfy.log 2>/dev/null; }; then
             send_heartbeat $COMFY_READY_PERCENT "comfy_ready"
             break
         fi
