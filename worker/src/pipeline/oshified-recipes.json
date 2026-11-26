@@ -4,6 +4,10 @@
     "prompts": {
       "female": "Transform this VTuber avatar to photorealistic equivalent of the same person, Fed_vTuberToHuman transformation\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)",
       "male": "Transform this male VTuber avatar to photorealistic equivalent of the same male person, Fed_vTuberToHuman transformation\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)"
+    },
+    "qwen_prompts": {
+      "female": "Edit the avatar in the first image into a natural, photorealistic portrait of the same woman. Translate stylized features into believable human features while preserving her recognizable face shape, expression, hairstyle and colors, clothing, and accessories. Use the second image as a pose guide. Keep natural skin texture and ordinary imperfections. Leave out text, logos, overlays, and watermarks.",
+      "male": "Edit the avatar in the first image into a natural, photorealistic portrait of the same man. Translate stylized features into believable human features while preserving his recognizable face shape, expression, hairstyle and colors, clothing, and accessories. Use the second image as a pose guide. Keep natural skin texture and ordinary imperfections. Leave out text, logos, overlays, and watermarks."
     }
   },
   "real-to-vtuber": {
@@ -11,6 +15,10 @@
     "prompts": {
       "female": "Transform this photorealistic photo into a VTuber avatar of the same person, Fed_HumanToVTuber transformation\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)",
       "male": "Transform this male photorealistic photo into a VTuber avatar of the same male person, Fed_HumanToVTuber transformation\n\n\n(Maintain exact props, accessories, clothes:1.3) \n(Maintain same personality and likeness:1.3)\n(include unattractive imperfections:1.3)\n(NO generic perfect person:1.5)\n(NO excessive girliness:1.2)\n(NO watermarks and NO text, NO overlays:1.5)"
+    },
+    "qwen_prompts": {
+      "female": "Edit the woman in the first image into an expressive, illustrated anime-style VTuber avatar of the same person. Use clean linework, cel shading, and a drawn face. Preserve her recognizable facial features, expression, hairstyle and colors, clothing, and accessories. Use the second image as a pose guide. Leave out text, logos, overlays, and watermarks.",
+      "male": "Edit the man in the first image into an expressive, illustrated anime-style VTuber avatar of the same person. Use clean linework, cel shading, and a drawn face. Preserve his recognizable facial features, expression, hairstyle and colors, clothing, and accessories. Use the second image as a pose guide. Leave out text, logos, overlays, and watermarks."
     }
   }
 }

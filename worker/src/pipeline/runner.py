@@ -562,8 +562,13 @@ def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full
     """Execute all active stages for one generation. Returns result dict."""
     is_oshified = params.get("method") in oshified.RECIPES
     if is_oshified:
-        oshified.apply_recipe(params)
-        manifest = oshified.load_manifest(params.get("retry_clip", False))
+        retry_clip = params.get("retry_clip", False)
+        try:
+            portrait_model = "kontext" if retry_clip else oshified.configured_portrait_model()
+        except ValueError as exc:
+            raise PipelineError(str(exc), "portrait") from exc
+        oshified.apply_recipe(params, portrait_model)
+        manifest = oshified.load_manifest(retry_clip, portrait_model)
     else:
         manifest = load_manifest()
     _apply_runtime_defaults(params)

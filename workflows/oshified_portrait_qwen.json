@@ -1,0 +1,251 @@
+{
+  "312": {
+    "inputs": {
+      "unet_name": "qwen_image_edit_2509_fp8_e4m3fn.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "313": {
+    "inputs": {
+      "lora_name": "Qwen-Image-Lightning-4steps-V1.0.safetensors",
+      "strength_model": 1,
+      "model": [
+        "312",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "315": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "317": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "320": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "interpolation": "lanczos",
+      "method": "pad",
+      "condition": "always",
+      "multiple_of": 8,
+      "image": [
+        "342",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "321": {
+    "inputs": {
+      "width": [
+        "320",
+        1
+      ],
+      "height": [
+        "320",
+        2
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "322": {
+    "inputs": {
+      "image": ""
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "LoadPose [in_pose]"
+    }
+  },
+  "323": {
+    "inputs": {
+      "width": [
+        "320",
+        1
+      ],
+      "height": [
+        "320",
+        2
+      ],
+      "interpolation": "nearest",
+      "method": "pad",
+      "condition": "always",
+      "multiple_of": 8,
+      "image": [
+        "322",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "324": {
+    "inputs": {
+      "detect_hand": "enable",
+      "detect_body": "enable",
+      "detect_face": "enable",
+      "resolution": 512,
+      "bbox_detector": "yolox_l.onnx",
+      "pose_estimator": "dw-ll_ucoco_384.onnx",
+      "scale_stick_for_xinsr_cn": "disable",
+      "image": [
+        "323",
+        0
+      ]
+    },
+    "class_type": "DWPreprocessor",
+    "_meta": {
+      "title": "DWPose Estimator"
+    }
+  },
+  "328": {
+    "inputs": {
+      "prompt": "",
+      "clip": [
+        "315",
+        0
+      ],
+      "vae": [
+        "317",
+        0
+      ],
+      "image1": [
+        "320",
+        0
+      ],
+      "image2": [
+        "324",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "Oshified portrait edit {prompt}"
+    }
+  },
+  "332": {
+    "inputs": {
+      "seed": 196573529878410,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "313",
+        0
+      ],
+      "positive": [
+        "328",
+        0
+      ],
+      "negative": [
+        "334",
+        0
+      ],
+      "latent_image": [
+        "321",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "334": {
+    "inputs": {
+      "prompt": "",
+      "clip": [
+        "315",
+        0
+      ],
+      "vae": [
+        "317",
+        0
+      ],
+      "image1": [
+        "320",
+        0
+      ],
+      "image2": [
+        "324",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "negative"
+    }
+  },
+  "338": {
+    "inputs": {
+      "samples": [
+        "332",
+        0
+      ],
+      "vae": [
+        "317",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "342": {
+    "inputs": {
+      "image": ""
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "LoadCharacter [in_image]"
+    }
+  },
+  "358": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "338",
+        0
+      ],
+      "filename_prefix": "oshified-portrait"
+    },
+    "_meta": {
+      "title": "Save lossless portrait [out]"
+    }
+  }
+}

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Verify both Oshified recipes use the inherited stage runner and name their outputs."""
 
+from itertools import product
 import os
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
+from types import ModuleType
 import unittest
 from unittest.mock import patch
 
@@ -13,6 +15,8 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from comfy_support import validate_input
 from pipeline import oshified, runner
+with patch.dict(sys.modules, {"runpod": ModuleType("runpod")}):
+    import rp_handler
 
 
 class Relay:
@@ -27,17 +31,25 @@ class Relay:
 
 class OshifiedPipelineTests(unittest.TestCase):
     def test_both_recipes_return_the_still_and_clip(self):
-        for method, recipe in oshified.RECIPES.items():
-            with self.subTest(method=method), TemporaryDirectory() as directory:
+        for entrypoint, model, (method, recipe), variant in product(
+            ("local", "runpod"), ("kontext", "qwen"), oshified.RECIPES.items(), ("female", "male")
+        ):
+            with self.subTest(entrypoint=entrypoint, model=model, method=method, variant=variant), \
+                    TemporaryDirectory() as directory:
                 root = Path(directory)
                 files = {slot: str(root / (slot + ".png")) for slot in oshified.REQUIRED_FILES}
                 files["in_audio"] = str(root / "audio.wav")
                 for slot in ("in_pose", "in_image"):
                     Image.new("RGB", (64, 48)).save(files[slot])
-                job, error = validate_input({
+                raw = {
                     "generation_id": "oshified_fixture",
-                    "params": {"method": method, "variant": "male", "files": files},
-                })
+                    "params": {
+                        "method": method, "variant": variant, "files": files,
+                        "prompt": "Untrusted prompt", "style_lora": "Untrusted adapter",
+                        "portrait_model": "qwen" if model == "kontext" else "kontext",
+                    },
+                }
+                job, error = validate_input(raw)
                 self.assertIsNone(error)
                 outputs = ("portrait.png", "still.jpg", "clip.mp4")
                 observed = []
@@ -55,27 +67,52 @@ class OshifiedPipelineTests(unittest.TestCase):
                     }}
 
                 relay = Relay()
-                with patch.object(runner, "WORK_DIR", str(root)), \
-                     patch.object(runner, "COMFY_OUTPUT_DIR", str(root)), \
-                     patch.object(runner, "download_files", return_value=files.copy()), \
-                     patch.object(runner, "_run_stage", side_effect=stage_result), \
-                     patch.dict(os.environ, {"MODEL_STORE_MANIFEST": ""}):
-                    result = runner.run_pipeline(
-                        job["generation_id"], job["user_id"], job["params"], relay, None,
-                        on_artifact=lambda kind, path: delivered.append((kind, path)),
-                    )
+                expected = {"still": str(root / "still.jpg"), "clip": str(root / "clip.mp4")}
 
-                self.assertEqual(observed[0]["193"]["inputs"]["text"], recipe["prompts"]["male"])
-                self.assertEqual(observed[0]["197"]["inputs"]["lora_name"], recipe["lora"])
+                def deliver(kind, path):
+                    delivered.append((kind, path))
+
+                with (
+                    patch.object(runner, "WORK_DIR", str(root)),
+                    patch.object(runner, "COMFY_OUTPUT_DIR", str(root)),
+                    patch.object(runner, "download_files", return_value=files.copy()),
+                    patch.object(runner, "_run_stage", side_effect=stage_result),
+                    patch.object(rp_handler, "check_server"),
+                    patch.object(rp_handler, "ENABLE_WEBSOCKET_PROGRESS", False),
+                    patch.object(rp_handler, "WebSocketProgressRelay", return_value=relay),
+                    patch.object(rp_handler, "OshifiedDelivery", return_value=deliver) as delivery,
+                    patch.dict(os.environ, {"MODEL_STORE_MANIFEST": "", "OSHIFIED_PORTRAIT_MODEL": model}),
+                ):
+                    if entrypoint == "runpod":
+                        response = rp_handler.handler({"input": raw})
+                        self.assertNotIn("error", response)
+                        self.assertEqual(response["output"]["message"]["artifacts"], sorted(expected))
+                        delivery.assert_called_once_with(job["generation_id"], 1, relay)
+                    else:
+                        result = runner.run_pipeline(
+                            job["generation_id"], job["user_id"], job["params"], relay, None,
+                            on_artifact=deliver,
+                        )
+                        self.assertEqual(result["artifacts"], expected)
+                        self.assertEqual(result["final_output"], expected["clip"])
+
+                portrait = observed[0]
+                if model == "qwen":
+                    self.assertEqual(portrait["328"]["inputs"]["prompt"], recipe["qwen_prompts"][variant])
+                    self.assertEqual(portrait["358"]["inputs"]["images"], ["338", 0])
+                    self.assertNotIn("194", portrait)
+                    self.assertNotIn("197", portrait)
+                    self.assertNotIn("style_lora", job["params"])
+                else:
+                    self.assertEqual(portrait["193"]["inputs"]["text"], recipe["prompts"][variant])
+                    self.assertEqual(portrait["197"]["inputs"]["lora_name"], recipe["lora"])
                 for node, slot in (("322", "in_pose"), ("342", "in_image")):
                     self.assertEqual(observed[0][node]["class_type"], "LoadImage")
                     self.assertEqual(observed[0][node]["inputs"]["image"], files[slot])
                 self.assertEqual(observed[1]["1"]["inputs"]["image"], str(root / "portrait.png"))
                 self.assertEqual(observed[2]["187"]["inputs"]["image"], str(root / "portrait.png"))
                 self.assertEqual(observed[2]["345"]["inputs"]["audio_file"], files["in_audio"])
-                self.assertEqual(result["artifacts"], {"still": str(root / "still.jpg"), "clip": str(root / "clip.mp4")})
-                self.assertEqual(result["final_output"], str(root / "clip.mp4"))
-                self.assertEqual(delivered, [("portrait", str(root / "portrait.png")), *result["artifacts"].items()])
+                self.assertEqual(delivered, [("portrait", str(root / "portrait.png")), *expected.items()])
 
     def test_staged_image_preserves_orientation_before_core_load(self):
         with TemporaryDirectory() as directory:
@@ -100,9 +137,18 @@ class OshifiedPipelineTests(unittest.TestCase):
                        "video_url": "https://youtu.be/mockfixture", "files": files},
         })
         self.assertIsNone(error)
-        manifest = oshified.load_manifest(job["params"]["retry_clip"])
-        self.assertEqual([stage["name"] for stage in manifest["stages"]], ["clip"])
-        self.assertEqual(manifest["stages"][0]["artifact"], "clip")
+        for model in ("kontext", "qwen"):
+            manifest = oshified.load_manifest(job["params"]["retry_clip"], model)
+            self.assertEqual([stage["name"] for stage in manifest["stages"]], ["clip"])
+            self.assertEqual(manifest["stages"][0]["artifact"], "clip")
+
+    def test_portrait_model_is_an_operator_setting(self):
+        with patch.dict(os.environ):
+            os.environ.pop("OSHIFIED_PORTRAIT_MODEL", None)
+            self.assertEqual(oshified.configured_portrait_model(), "kontext")
+            os.environ["OSHIFIED_PORTRAIT_MODEL"] = "unsupported"
+            with self.assertRaisesRegex(ValueError, "OSHIFIED_PORTRAIT_MODEL"):
+                oshified.configured_portrait_model()
 
     def test_rejects_unrecognized_file_slots(self):
         _, error = validate_input({

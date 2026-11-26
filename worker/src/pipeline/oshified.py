@@ -39,10 +39,22 @@ def validate_job(generation_id, params):
     return None
 
 
-def apply_recipe(params):
+def configured_portrait_model():
+    model = os.environ.get("OSHIFIED_PORTRAIT_MODEL", "kontext")
+    if model not in ("kontext", "qwen"):
+        raise ValueError("Set OSHIFIED_PORTRAIT_MODEL to kontext or qwen")
+    return model
+
+
+def apply_recipe(params, portrait_model="kontext"):
     recipe = RECIPES[params["method"]]
-    params["prompt"] = recipe["prompts"][params.get("variant", "female")]
-    params["style_lora"] = recipe["lora"]
+    variant = params.get("variant", "female")
+    if portrait_model == "qwen":
+        params["prompt"] = recipe["qwen_prompts"][variant]
+        params.pop("style_lora", None)
+    else:
+        params["prompt"] = recipe["prompts"][variant]
+        params["style_lora"] = recipe["lora"]
     params["video_url"] = "" if params["files"].get("in_audio") else params["video_url"]
 
 
@@ -65,9 +77,12 @@ def orient_staged_images(files):
         files[slot] = str(destination)
 
 
-def load_manifest(retry_clip=False):
+def load_manifest(retry_clip=False, portrait_model="kontext"):
     with (_RECIPE_DIR / "oshified-manifest.json").open() as source:
         manifest = json.load(source)
     if retry_clip:
         manifest["stages"] = [stage for stage in manifest["stages"] if stage["name"] == "clip"]
+    elif portrait_model == "qwen":
+        portrait = next(stage for stage in manifest["stages"] if stage["name"] == "portrait")
+        portrait["file"] = "workflows/oshified_portrait_qwen.json"
     return manifest

@@ -52,6 +52,14 @@ Local generation runs on the workstation with its local model files and media.
 Local jobs are available for the lifetime of the app-server process. The
 loopback wizard requires only the local app server and ComfyUI.
 
+To try the alternative portrait workflow, start the local app server with
+`OSHIFIED_PORTRAIT_MODEL=qwen`. It uses Qwen Image Edit 2509 and the Qwen
+Lightning adapter already in the default workflow. Both mode prompts feed
+Qwen directly. The lossless portrait, JPEG still, and clip stages use the same
+handoff. Start fresh jobs in both modes when checking the resulting portraits.
+The default is `OSHIFIED_PORTRAIT_MODEL=kontext`, which uses the existing mode
+adapters. The Qwen workflow needs a visual comparison before release.
+
 To exercise the pipeline without private assets, install Pillow in the local
 Python environment, then run `python worker/scripts/make_oshified_demo_media.py /tmp/oshified-demo`
 with FFmpeg on `PATH`. Use its `pose.png`, `end-card.mp4`, `corner.mp4`, and
@@ -147,6 +155,10 @@ its private R2 buckets, the RunPod endpoint, and the Backblaze B2 model bucket.
   `S3_SECRET_ACCESS_KEY`. Set `S3_REGION_NAME` when required by the
   provider. Point this configuration to the same private exports bucket as
   the backend. The frontend accesses private outputs through the API.
+  For a Qwen portrait rehearsal, build the image from a revision that includes
+  `workflows/oshified_portrait_qwen.json` and set
+  `OSHIFIED_PORTRAIT_MODEL=qwen` in the RunPod worker environment. This is a
+  worker setting. It applies to new portrait jobs in both modes.
 - **Backblaze B2 model store** uses `MODEL_STORE_ENDPOINT`,
   `MODEL_STORE_REGION`, `MODEL_STORE_BUCKET`, `MODEL_STORE_KEY_ID`, and
   `MODEL_STORE_APP_KEY` on RunPod. Use a read-only application key scoped
