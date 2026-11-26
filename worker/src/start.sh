@@ -228,6 +228,14 @@ else
     log "  [SKIP] VideoHelperSuite not installed."
 fi
 
+# Qwen ran correctly with split attention and automatic precision.
+# Keep the inherited default for Kontext and respect explicit worker arguments.
+COMFY_DEFAULT_ATTENTION_ARGS=--force-fp16
+if [ "${OSHIFIED_PORTRAIT_MODEL:-kontext}" = "qwen" ]; then
+    COMFY_DEFAULT_ATTENTION_ARGS=--use-split-cross-attention
+fi
+COMFY_ATTENTION_ARGS="${COMFY_ATTENTION_ARGS:-$COMFY_DEFAULT_ATTENTION_ARGS}"
+
 # Start services based on the deployment mode
 if [ "$DEPLOYMENT_MODE" = "pod" ]; then
     # --- POD MODE ---
@@ -250,7 +258,6 @@ if [ "$DEPLOYMENT_MODE" = "pod" ]; then
                --ServerApp.allow_remote_access=True &
 
     log "Starting ComfyUI in background..."
-    COMFY_ATTENTION_ARGS="${COMFY_ATTENTION_ARGS:---force-fp16}"
     log "ComfyUI attention args: $COMFY_ATTENTION_ARGS"
     python3 $COMFY_PATH/main.py --listen 0.0.0.0 \
                   --port 3000 \
@@ -262,7 +269,6 @@ if [ "$DEPLOYMENT_MODE" = "pod" ]; then
 elif [ "$DEPLOYMENT_MODE" = "serverless" ]; then
     # --- SERVERLESS MODE ---
     log "Starting services for SERVERLESS mode..."
-    COMFY_ATTENTION_ARGS="${COMFY_ATTENTION_ARGS:---force-fp16}"
     log "ComfyUI attention args: $COMFY_ATTENTION_ARGS"
     python3 $COMFY_PATH/main.py --disable-auto-launch $COMFY_ATTENTION_ARGS --verbose > /tmp/comfy.log 2>&1 &
     COMFY_PID=$!

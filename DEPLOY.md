@@ -158,8 +158,9 @@ its private R2 buckets, the RunPod endpoint, and the Backblaze B2 model bucket.
   the backend. The frontend accesses private outputs through the API.
   For the Qwen portrait workflow, use an image built with
   `workflows/oshified_portrait_qwen.json`. Set `OSHIFIED_PORTRAIT_MODEL=qwen`
-  and `COMFY_ATTENTION_ARGS=--use-split-cross-attention` in the RunPod worker
-  environment. The split-attention setting replaces the inherited
+  in the RunPod worker environment. The worker launcher defaults Qwen to
+  split attention. On older images, including `preview-qwen-23edb853`, also
+  set `COMFY_ATTENTION_ARGS=--use-split-cross-attention`. This replaces the inherited
   `--force-fp16` default, which produced entirely black Qwen portraits in
   both modes. On a fresh worker, check visible detail in the portrait and
   verify that the clip plays with audio. Repeat in the other mode.
