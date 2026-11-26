@@ -21,8 +21,17 @@ class ModelPreparationError(RuntimeError):
     pass
 
 
+def _canonical_object_path(value):
+    path = PurePosixPath(value)
+    return (bool(path.parts) and not path.is_absolute() and ".." not in path.parts
+            and path.as_posix() == value and "\\" not in value
+            and not any(ord(char) < 32 or ord(char) == 127 for char in value))
+
+
 class ModelAssets:
-    def __init__(self, manifest, root, client, bucket):
+    def __init__(self, manifest, root, client, bucket, *, object_prefix=""):
+        if object_prefix and not _canonical_object_path(object_prefix):
+            raise ValueError("MODEL_STORE_OBJECT_PREFIX must be a canonical relative path")
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.client = client
@@ -44,6 +53,8 @@ class ModelAssets:
                 raise ValueError("Invalid model size or SHA-256")
             if not isinstance(key, str) or not key:
                 raise ValueError("Invalid object key")
+            if object_prefix and key.rsplit("/", 1)[-1] == sha and _canonical_object_path(key):
+                spec = {**spec, "key": f"{object_prefix}/{sha}"}
             name = path.as_posix()
             if name in self.entries:
                 raise ValueError(f"Duplicate model path: {name}")
@@ -70,7 +81,8 @@ class ModelAssets:
                           retries={"mode": "standard", "max_attempts": 2}),
         )
         return cls(json.loads(Path(manifest_path).read_text()), os.environ["MODEL_STORE_ROOT"],
-                   client, os.environ["MODEL_STORE_BUCKET"])
+                   client, os.environ["MODEL_STORE_BUCKET"],
+                   object_prefix=os.environ.get("MODEL_STORE_OBJECT_PREFIX", ""))
 
     def required(self, graph):
         selected = set()

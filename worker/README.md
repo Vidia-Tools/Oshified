@@ -177,6 +177,13 @@ Configure the worker with `MODEL_STORE_ENDPOINT`, `MODEL_STORE_REGION`,
 Use a private bucket and app key scoped to the release prefix with read access. Backblaze B2 is the reference S3-compatible
 provider. Keep the access values in runtime secrets.
 
+Set `MODEL_STORE_OBJECT_PREFIX` to a canonical relative path such as
+`oshified/sha256` to reuse an existing content-addressed prefix. Use no
+leading or trailing slash. The worker looks up eligible objects as
+`<prefix>/<sha256>`, keeping their local install paths and selectors.
+Unset or empty uses each manifest key as written. Keys without a
+canonical path ending in the entry's SHA-256 always stay as written.
+
 The worker starts without a network volume. It fetches missing weights for
 the active graph, verifies them against the manifest, and reuses them on the
 same worker. The hosted UI reports actual bytes, then distinguishes model
