@@ -58,7 +58,8 @@ Lightning adapter already in the default workflow. Both mode prompts feed
 Qwen directly. The lossless portrait, JPEG still, and clip stages use the same
 handoff. Start fresh jobs in both modes when checking the resulting portraits.
 The default is `OSHIFIED_PORTRAIT_MODEL=kontext`, which uses the existing mode
-adapters. The Qwen workflow needs a visual comparison before release.
+adapters. Start the local ComfyUI process with its automatic precision
+selection for Qwen.
 
 To exercise the pipeline without private assets, install Pillow in the local
 Python environment, then run `python worker/scripts/make_oshified_demo_media.py /tmp/oshified-demo`
@@ -155,10 +156,13 @@ its private R2 buckets, the RunPod endpoint, and the Backblaze B2 model bucket.
   `S3_SECRET_ACCESS_KEY`. Set `S3_REGION_NAME` when required by the
   provider. Point this configuration to the same private exports bucket as
   the backend. The frontend accesses private outputs through the API.
-  For a Qwen portrait rehearsal, build the image from a revision that includes
-  `workflows/oshified_portrait_qwen.json` and set
-  `OSHIFIED_PORTRAIT_MODEL=qwen` in the RunPod worker environment. This is a
-  worker setting. It applies to new portrait jobs in both modes.
+  For the Qwen portrait workflow, use an image built with
+  `workflows/oshified_portrait_qwen.json`. Set `OSHIFIED_PORTRAIT_MODEL=qwen`
+  and `COMFY_ATTENTION_ARGS=--use-split-cross-attention` in the RunPod worker
+  environment. The split-attention setting replaces the inherited
+  `--force-fp16` default, which produced entirely black Qwen portraits in
+  both modes. On a fresh worker, check visible detail in the portrait and
+  verify that the clip plays with audio. Repeat in the other mode.
 - **Backblaze B2 model store** uses `MODEL_STORE_ENDPOINT`,
   `MODEL_STORE_REGION`, `MODEL_STORE_BUCKET`, `MODEL_STORE_KEY_ID`, and
   `MODEL_STORE_APP_KEY` on RunPod. Use a read-only application key scoped
