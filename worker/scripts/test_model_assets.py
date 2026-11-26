@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise optional model preparation with a controlled S3 transport."""
 
+import errno
 import hashlib
 from pathlib import Path
 import sys
@@ -56,15 +57,15 @@ class ModelAssetsTests(unittest.TestCase):
         "3": {"class_type": "Loader", "inputs": {"ckpt_name": "unused.safetensors"}},
     }
 
-    def store(self, root, client):
+    def store(self, root, client, *aliases):
         return ModelAssets({
             "version": 1,
             "files": [{
-                "path": self.relative_path,
+                "path": path,
                 "key": "example",
                 "size": len(self.payload),
                 "sha256": hashlib.sha256(self.payload).hexdigest(),
-            }],
+            } for path in (self.relative_path, *aliases)],
         }, root, client, "fixture")
 
     def test_connected_cold_resume_and_warm_reuse(self):
@@ -91,6 +92,62 @@ class ModelAssetsTests(unittest.TestCase):
             with self.assertRaisesRegex(ModelPreparationError, "SHA-256"):
                 store.prepare(graph, lambda *_: None)
             self.assertEqual(list((Path(root) / "checkpoints").iterdir()), [])
+
+    def test_cold_graph_downloads_shared_model_bytes_once(self):
+        alias = "checkpoints/other.safetensors"
+        graph = {
+            "1": {"class_type": "Loader", "inputs": {"ckpt_name": "example.safetensors"}},
+            "2": {"class_type": "Loader", "inputs": {"ckpt_name": "other.safetensors"}},
+        }
+        storage = Storage(self.payload)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            events = []
+            store = self.store(root, storage, alias)
+            store.prepare(graph, lambda _, event: events.append(event))
+            self.assertEqual(storage.ranges, [None])
+            self.assertEqual((root / alias).read_bytes(), self.payload)
+            self.assertEqual([e["totalBytes"] for e in events if e["phase"] == "downloading"],
+                             [len(self.payload), len(self.payload)])
+
+    def test_alias_reuses_verified_model_from_another_stage(self):
+        alias = "another-folder/other.safetensors"
+        primary = _connected_to_outputs(self.graph, {"Save"})
+        alias_graph = {"1": {"class_type": "Loader", "inputs": {"ckpt_name": "other.safetensors"}}}
+        storage = Storage(self.payload)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = self.store(root, storage, alias)
+            store.prepare(primary, lambda *_: None)
+
+            events = []
+            store = self.store(root, storage, alias)
+            store.prepare(alias_graph, lambda _, event: events.append(event))
+            self.assertEqual(events, [{"phase": "loading"}])
+            self.assertEqual(storage.ranges, [None])
+            self.assertTrue((root / alias).samefile(root / self.relative_path))
+
+            (root / self.relative_path).unlink()
+            (root / self.relative_path).write_bytes(b"different checkpoint")
+            store.prepare(alias_graph, lambda *_: None)
+            self.assertEqual(storage.ranges, [None])
+            self.assertEqual((root / alias).read_bytes(), self.payload)
+
+    def test_cache_without_hardlinks_copies_verified_alias_locally(self):
+        alias = "checkpoints/other.safetensors"
+        graph = {
+            "1": {"class_type": "Loader", "inputs": {"ckpt_name": "example.safetensors"}},
+            "2": {"class_type": "Loader", "inputs": {"ckpt_name": "other.safetensors"}},
+        }
+        storage = Storage(self.payload)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = self.store(root, storage, alias)
+            with patch("model_assets.os.link", side_effect=OSError(errno.EOPNOTSUPP, "unsupported")):
+                store.prepare(graph, lambda *_: None)
+            self.assertEqual(storage.ranges, [None])
+            self.assertEqual((root / alias).read_bytes(), self.payload)
+            self.assertFalse((root / alias).samefile(root / self.relative_path))
 
     def test_local_models_do_not_require_storage(self):
         with patch.dict("os.environ", {}, clear=True), patch.object(ModelAssets, "from_env") as from_env:

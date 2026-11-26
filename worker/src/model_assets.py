@@ -1,5 +1,6 @@
 """Download only the verified model assets required by an API workflow graph."""
 
+import errno
 import fcntl
 from functools import lru_cache
 import hashlib
@@ -29,6 +30,7 @@ class ModelAssets:
         self.entries = {}
         self.by_ref = {}
         self.by_node = {}
+        self.by_content = {}
         if manifest.get("version") != 1 or not manifest.get("files"):
             raise ValueError("Invalid model manifest")
         for spec in manifest["files"]:
@@ -46,6 +48,7 @@ class ModelAssets:
             if name in self.entries:
                 raise ValueError(f"Duplicate model path: {name}")
             self.entries[name] = spec
+            self.by_content.setdefault((sha, size), []).append(spec)
             for ref in {name, path.name, *spec.get("references", [])}:
                 self.by_ref.setdefault(ref.replace("\\", "/"), set()).add(name)
             for class_type in spec.get("node_classes", []):
@@ -99,8 +102,16 @@ class ModelAssets:
             return
         with (self.root / ".model-store.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            pending = [spec for spec in required if not self._verified(spec)]
-            total = sum(item["size"] for item in pending)
+            pending = {}
+            for spec in required:
+                if not self._verified(spec):
+                    identity = spec["sha256"], spec["size"]
+                    pending.setdefault(identity, []).append(spec)
+            cached = {
+                identity: next((spec for spec in self.by_content[identity] if self._verified(spec)), None)
+                for identity in pending
+            }
+            total = sum(size for (_, size), source in cached.items() if source is None)
             if total > shutil.disk_usage(self.root).free:
                 raise ModelPreparationError("Worker has insufficient disk space for required models")
             done = 0
@@ -117,10 +128,15 @@ class ModelAssets:
 
             if total:
                 publish(0, always=True)
-                for spec in pending:
-                    self._download(spec, lambda count: publish(done + count))
-                    done += spec["size"]
+            for identity, targets in pending.items():
+                source = cached[identity]
+                if source is None:
+                    source, *targets = targets
+                    self._download(source, lambda count: publish(done + count))
+                    done += source["size"]
                     publish(done, always=done == total)
+                for spec in targets:
+                    self._reuse_verified(source, spec)
             send_progress("model_preparation", {"phase": "loading"})
 
     def _paths(self, spec):
@@ -140,6 +156,28 @@ class ModelAssets:
             )
         except FileNotFoundError:
             return False
+
+    def _reuse_verified(self, source, spec):
+        source_path, _ = self._paths(source)
+        source_path = source_path.resolve(strict=True)
+        path, receipt = self._paths(spec)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path != source_path:
+            tmp = path.with_name("." + path.name + ".alias")
+            try:
+                tmp.unlink(missing_ok=True)
+                try:
+                    os.link(source_path, tmp)
+                except OSError as exc:
+                    if exc.errno not in {errno.EXDEV, errno.EPERM, errno.EOPNOTSUPP, errno.EMLINK}:
+                        raise
+                    if spec["size"] > shutil.disk_usage(path.parent).free:
+                        raise ModelPreparationError("Worker has insufficient disk space for required models") from exc
+                    shutil.copyfile(source_path, tmp)
+                tmp.replace(path)
+            finally:
+                tmp.unlink(missing_ok=True)
+        receipt.write_text(f'{spec["sha256"]} {path.stat().st_mtime_ns}\n')
 
     def _download(self, spec, progress):
         path, receipt = self._paths(spec)
