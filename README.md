@@ -4,8 +4,9 @@ Oshified is an AGPL-3.0-only application built directly from Vidia Open Studio.
 It uses Open Studio's ComfyUI workflows, stage runner, local app server, and
 RunPod worker to power two guided modes for turning a photo into a VTuber
 portrait or imagining a VTuber as a real-looking character, followed by an
-audio-driven clip. The separate Oshified node pack descends from
-Vidia-Open-Studio-Nodes.
+audio-driven clip. The [Oshified node pack](https://github.com/Vidia-Tools/Oshified-Nodes)
+descends from [Vidia Open Studio Nodes](https://github.com/Vidia-Tools/Vidia-Open-Studio-Nodes)
+and retains its own license.
 
 Start with the [Oshified setup](DEPLOY.md#oshified-setup) to run locally or
 assemble an isolated hosted release. The inherited Open Studio reference

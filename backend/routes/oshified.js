@@ -173,7 +173,7 @@ export function oshifiedRoutes(router) {
 		const { id } = request.params;
 		const job = await findJob(id, env);
 		const access = readAccess(request);
-		if (!job || !access || job.access !== access) return new Response(null, { status: 404 });
+		if (!job || !access || job.access !== access) return reportError('Job not found', 404);
 		const origin = new URL(request.url).origin;
 		const snapshot = jsonResponse({
 			id, status: job.status, error: job.error, progress: job.progress, canRetryClip: canRetryClip(job),
