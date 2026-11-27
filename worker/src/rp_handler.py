@@ -18,6 +18,7 @@ from comfy_support import (
 )
 from pipeline import oshified, runner
 from oshified_delivery import ArtifactDeliveryError, OshifiedDelivery
+from oshified_legacy import LegacyDelivery, LegacyRelay, adapt
 
 
 COMFY_LOG_PATH = os.environ.get("COMFY_LOG_PATH", "/tmp/comfy.log")
@@ -100,10 +101,16 @@ def handler(job):
     is_oshified = False
     try:
         logger.info("Processing Request")
-        validated, error_message = validate_input(job.get("input"))
+        raw = job.get("input")
+        legacy = isinstance(raw, dict) and "prompt" in raw and "params" not in raw
+        if legacy:
+            try:
+                raw = adapt(raw)
+            except ValueError as exc:
+                return {"error": str(exc), "generation_id": None, "stage": None}
+        validated, error_message = validate_input(raw)
         if error_message:
             print(f"\nValidation error: {error_message}")
-            raw = job.get("input")
             if isinstance(raw, dict):
                 generation_id = raw.get("generation_id") or raw.get("client_id")
             return {"error": error_message, "generation_id": generation_id, "stage": None}
@@ -113,7 +120,7 @@ def handler(job):
         params = validated["params"]
 
         # RunPod appends worker suffixes like "-u1" to the generation_id
-        if generation_id and "-u" in generation_id:
+        if not legacy and generation_id and "-u" in generation_id:
             parts = generation_id.split("-u")
             if len(parts) > 1 and parts[1].isdigit():
                 generation_id = parts[0]
@@ -121,7 +128,7 @@ def handler(job):
 
         is_oshified = params["method"] in oshified.RECIPES
         attempt = params.get("attempt", 1) if is_oshified else None
-        relay = WebSocketProgressRelay(generation_id, attempt)
+        relay = LegacyRelay(generation_id) if legacy else WebSocketProgressRelay(generation_id, attempt)
         check_server(
             f"http://{COMFY_HOST}",
             COMFY_API_AVAILABLE_MAX_RETRIES,
@@ -156,9 +163,10 @@ def handler(job):
         start_time = time.time()
         try:
             if is_oshified:
-                delivery = OshifiedDelivery(generation_id, attempt, relay)
+                delivery = LegacyDelivery(generation_id, relay) if legacy else OshifiedDelivery(generation_id, attempt, relay)
+                input_options = {"allow_input_redirects": False} if legacy else {}
                 result = runner.run_pipeline(generation_id, user_id, params, relay, progress,
-                                             on_artifact=delivery)
+                                             on_artifact=delivery, **input_options)
             else:
                 result = runner.run_pipeline(generation_id, user_id, params, relay, progress,
                                              run_type=validated.get("type", "full"))

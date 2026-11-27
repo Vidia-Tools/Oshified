@@ -122,7 +122,7 @@ def active_stages(manifest, params):
     return stages
 
 
-def download_files(files, dest_dir):
+def download_files(files, dest_dir, *, allow_redirects=True):
     """Download params.files.* once; return slot -> local path."""
     os.makedirs(dest_dir, exist_ok=True)
     paths = {}
@@ -135,8 +135,10 @@ def download_files(files, dest_dir):
             logger.info(f"Downloading input for {slot}")
             partial = local + ".partial"
             try:
-                with requests.get(url, stream=True, timeout=120) as response:
+                with requests.get(url, stream=True, timeout=120, allow_redirects=allow_redirects) as response:
                     response.raise_for_status()
+                    if not allow_redirects and 300 <= response.status_code < 400:
+                        raise PipelineError(f"Unexpected redirect for {slot}")
                     with open(partial, "wb") as output:
                         for chunk in response.iter_content(1 << 20):
                             output.write(chunk)
@@ -558,7 +560,8 @@ def _run_stage(graph, info, progress, stage_relay, log_state):
     raise PipelineError("Max retries reached while waiting for stage completion")
 
 
-def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full", on_artifact=None):
+def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full", on_artifact=None,
+                 *, allow_input_redirects=True):
     """Execute all active stages for one generation. Returns result dict."""
     is_oshified = params.get("method") in oshified.RECIPES
     if is_oshified:
@@ -586,7 +589,8 @@ def run_pipeline(generation_id, user_id, params, relay, progress, run_type="full
         logger.info(f"[SEED] resolved random seed {seed} for generation_id={generation_id}")
     params["seed"] = seed
 
-    file_paths = download_files(params.get("files"), os.path.join(gen_dir, "inputs"))
+    file_paths = download_files(params.get("files"), os.path.join(gen_dir, "inputs"),
+                                allow_redirects=allow_input_redirects)
     if is_oshified and not params.get("retry_clip", False):
         try:
             oshified.orient_staged_images(file_paths)
